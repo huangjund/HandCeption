@@ -1,3 +1,6 @@
 [submodule "DynamixelSDK"]
 	path = DynamixelSDK
 	url = https://github.com/ROBOTIS-GIT/DynamixelSDK.git
+[submodule "visual_module"]
+	path = visual_module
+	url = git@github.com:junzastar/DFTr_Voting.git
