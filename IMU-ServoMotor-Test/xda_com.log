@@ -1,0 +1,54 @@
+1730643189.349 <7B78> [WRITE] FilterManager::FilterManager Added xkf3hm_filter64.dll to filter plugin list as xkf3hm
+1730643189.384 <7B78> [WRITE] FilterManager::FilterManager Added xkf3i_filter64.dll to filter plugin list as xkf3i
+1730643189.419 <7B78> [WRITE] FilterManager::FilterManager Added xkf700_filter64.dll to filter plugin list as xkf700
+1730643189.453 <7B78> [WRITE] FilterManager::FilterManager Added xkfcore_filter64.dll to filter plugin list as xkfcore
+1730643190.283 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730643190.503 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730643232.745 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730643232.966 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730643764.622 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730643764.843 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730643938.608 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730643938.828 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730644016.204 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730644016.421 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730644038.608 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730644038.825 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730644064.643 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730644064.861 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730644122.188 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730644122.408 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730644869.002 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730644869.219 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730644893.246 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730644893.462 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730644968.225 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730644968.444 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730645002.737 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730645002.955 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730645026.412 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730645026.629 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730645197.966 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730645198.184 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730645227.732 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730645227.950 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730645836.953 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730645837.173 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730645859.480 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730645859.699 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730645928.649 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730645928.865 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730645941.819 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730645942.037 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730646481.906 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730646482.126 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730646497.371 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730646497.589 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730646539.302 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730646539.519 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730646559.553 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730646559.774 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730646690.523 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730646690.742 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
+1730646780.307 <7B78> [WRITE] XsDevice::extractFirmwareVersion Device 0388A0FA has firmware version 1.20.1 build 6231 rev 125631
+1730646780.521 <7B78> [WRITE] DeviceFactory::createMasterDevice Created master device with id: 0388A0FA and firmware version: 1.20.1 build 6231 rev 125631
