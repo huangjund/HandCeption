@@ -55,3 +55,13 @@ sudo apt install libopencv-dev
 # verify installation
 pkg-config --modversion opencv4
 ```
+# Train the model
+
+```angular2html
+torchrun --nproc_per_node=$n_gpu train_lm.py --gpus=$n_gpu --cls=$cls
+```
+
+# TODO
+
+1. Substitute apex from nvidia github repo to pytorch package.
+2. 
