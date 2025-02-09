@@ -4,3 +4,6 @@
 [submodule "visual_module"]
 	path = visual_module
 	url = git@github.com:junzastar/DFTr_Voting.git
+[submodule "bop_toolkit"]
+	path = bop_toolkit
+	url = https://github.com/thodan/bop_toolkit.git
