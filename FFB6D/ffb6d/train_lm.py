@@ -27,23 +27,17 @@ import torch.backends.cudnn as cudnn
 from tensorboardX import SummaryWriter
 
 from common import Config, ConfigRandLA
-from models.utils_my.pvn3d_eval_utils_kpls_v1 import TorchEval
-from models.utils_my.basic_utils import Basic_Utils
-
 import models.pytorch_utils as pt_utils
 from models.ffb6d import FFB6D
-from models.loss import OFLoss, FocalLoss, CosLoss
-# from utils.pvn3d_eval_utils_kpls import TorchEval
-# from utils.basic_utils import Basic_Utils
+from models.loss import OFLoss, FocalLoss
+from utils.pvn3d_eval_utils_kpls import TorchEval
+from utils.basic_utils import Basic_Utils
 import datasets.linemod.linemod_dataset as dataset_desc
 
 from apex.parallel import DistributedDataParallel
 from apex.parallel import convert_syncbn_model
 from apex import amp
 from apex.multi_tensor_apply import multi_tensor_applier
-import warnings
-warnings.filterwarnings("ignore")
-
 
 
 parser = argparse.ArgumentParser(description="Arg parser")
@@ -99,7 +93,7 @@ parser.add_argument('-debug', action='store_true')
 parser.add_argument('--local_rank', type=int, default=0)
 parser.add_argument('--gpu_id', type=list, default=[0, 1, 2, 3, 4, 5, 6, 7])
 parser.add_argument('-n', '--nodes', default=1, type=int, metavar='N')
-parser.add_argument('-g', '--gpus', default=1, type=int,
+parser.add_argument('-g', '--gpus', default=8, type=int,
                     help='number of gpus per node')
 parser.add_argument('-nr', '--nr', default=0, type=int,
                     help='ranking within the nodes')
@@ -110,9 +104,7 @@ parser.add_argument('--deterministic', action='store_true')
 parser.add_argument('--keep_batchnorm_fp32', default=True)
 parser.add_argument('--opt_level', default="O0", type=str,
                     help='opt level of apex mix presision trainig.')
-
 args = parser.parse_args()
-
 
 os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
@@ -194,8 +186,8 @@ def load_checkpoint(model=None, optimizer=None, filename="checkpoint"):
             model.load_state_dict(ck_st)
         if optimizer is not None and ck["optimizer_state"] is not None:
             optimizer.load_state_dict(ck["optimizer_state"])
-        # if ck.get("amp", None) is not None:
-        amp.load_state_dict(ck["amp"])
+        if ck.get("amp", None) is not None:
+            amp.load_state_dict(ck["amp"])
         print("==> Done")
         return it, epoch, best_prec
     else:
@@ -406,8 +398,7 @@ class Trainer(object):
             per = 100 if 'acc' in k else 1
             mean_eval_dict[k] = np.array(v).mean() * per
             if 'acc' in k:
-                # acc_dict[k] = v
-                acc_dict[k] = np.array(v).mean()
+                acc_dict[k] = v
         for k, v in mean_eval_dict.items():
             print(k, v)
 
@@ -462,7 +453,6 @@ class Trainer(object):
         print("Totally train %d iters per gpu." % tot_iter)
 
         def is_to_eval(epoch, it):
-            # Eval after first 100 iters to test eval function.
             if it == 100:
                 return True, 1
             wid = tot_iter // clr_div
@@ -481,7 +471,6 @@ class Trainer(object):
         ) as pbar:
 
             for epoch in tbar:
-                print("current epoch: {0}".format(epoch))
                 if epoch > config.n_total_epoch:
                     break
                 if train_sampler is not None:
@@ -580,14 +569,14 @@ def train():
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_ds)
         train_loader = torch.utils.data.DataLoader(
             train_ds, batch_size=config.mini_batch_size, shuffle=False,
-            drop_last=True, num_workers=10, sampler=train_sampler, pin_memory=True
+            drop_last=True, num_workers=4, sampler=train_sampler, pin_memory=True
         )
 
         val_ds = dataset_desc.Dataset('test', cls_type=args.cls)
         val_sampler = torch.utils.data.distributed.DistributedSampler(val_ds)
         val_loader = torch.utils.data.DataLoader(
             val_ds, batch_size=config.val_mini_batch_size, shuffle=False,
-            drop_last=False, num_workers=10, sampler=val_sampler
+            drop_last=False, num_workers=4, sampler=val_sampler
         )
     else:
         test_ds = dataset_desc.Dataset('test', cls_type=args.cls)

@@ -2,6 +2,7 @@
 import os
 import yaml
 import numpy as np
+from yaml import FullLoader
 
 
 def ensure_fd(fd):

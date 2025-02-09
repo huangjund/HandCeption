@@ -4,10 +4,6 @@ import torch.nn.functional as F
 from models.cnn.pspnet import PSPNet
 import models.pytorch_utils as pt_utils
 from models.RandLA.RandLANet import Network as RandLANet
-from models.my_fusion_block.DFTr import DFTr
-
-from einops import rearrange
-import numpy as np
 
 
 psp_models = {
@@ -19,7 +15,7 @@ psp_models = {
 
 class FFB6D(nn.Module):
     def __init__(
-        self, n_classes, n_pts, rndla_cfg, n_kps=8, image_anchors=480*640
+        self, n_classes, n_pts, rndla_cfg, n_kps=8
     ):
         super().__init__()
 
@@ -27,7 +23,7 @@ class FFB6D(nn.Module):
         self.n_cls = n_classes
         self.n_pts = n_pts
         self.n_kps = n_kps
-        cnn = psp_models['resnet34'.lower()]() #34
+        cnn = psp_models['resnet34'.lower()]()
 
         rndla = RandLANet(rndla_cfg)
 
@@ -46,70 +42,43 @@ class FFB6D(nn.Module):
             nn.Sequential(cnn.feats.layer3, cnn.feats.layer4),
             nn.Sequential(cnn.psp, cnn.drop_1)   # [bs, 1024, 60, 80]
         ])
-        self.ds_sr = [4, 8, 8, 8] # four donsample layers
+        self.ds_sr = [4, 8, 8, 8]
 
         self.rndla_ds_stages = rndla.dilated_res_blocks
 
-        self.ds_rgb_oc = [64, 128, 512, 1024] #Image branch 下采样层输出的通道
-        self.ds_rndla_oc = [item * 2 for item in rndla_cfg.d_out] #d_out = [32, 64, 128, 256]  # feature dimension
+        self.ds_rgb_oc = [64, 128, 512, 1024]
+        self.ds_rndla_oc = [item * 2 for item in rndla_cfg.d_out]
         self.ds_fuse_r2p_pre_layers = nn.ModuleList()
         self.ds_fuse_r2p_fuse_layers = nn.ModuleList()
         self.ds_fuse_p2r_pre_layers = nn.ModuleList()
         self.ds_fuse_p2r_fuse_layers = nn.ModuleList()
-        # self.ds_sa_fuse_r2p_layers = nn.ModuleList() # self attention 层
-        # self.ds_sa_fuse_p2r_layers = nn.ModuleList() # self attention 层
-        # self.ds_cs_fuse_r2p_layers = nn.ModuleList() # cross attention 层
-        # self.ds_cs_fuse_p2r_layers = nn.ModuleList() # cross attention 层
-        self.ds_dftr_layer = nn.ModuleList() # Deep fusion transfomer layer
-        num_fusion_layer_ds = [1,1,1,1]
-        ds_rgb_anchor = [image_anchors // 16, image_anchors // 64, image_anchors // 64, image_anchors // 64]
-        ds_pre_fusion_dim = [128,256,1024,2048]
-
         for i in range(4):
-            if i < 3:
-                continue
             self.ds_fuse_r2p_pre_layers.append(
                 pt_utils.Conv2d(
-                    self.ds_rgb_oc[i], ds_pre_fusion_dim[i], kernel_size=(1, 1),
+                    self.ds_rgb_oc[i], self.ds_rndla_oc[i], kernel_size=(1, 1),
                     bn=True
-                ) #ZJ # 1. channel 64 -> 128; 2. channel 128 ->  256
-                  # 3. channel 512 -> 1024; 4. channel 1024 -> 2048
+                )
+            )
+            self.ds_fuse_r2p_fuse_layers.append(
+                pt_utils.Conv2d(
+                    self.ds_rndla_oc[i]*2, self.ds_rndla_oc[i], kernel_size=(1, 1),
+                    bn=True
+                )
             )
 
             self.ds_fuse_p2r_pre_layers.append(
                 pt_utils.Conv2d(
-                    self.ds_rndla_oc[i], ds_pre_fusion_dim[i], kernel_size=(1, 1),
+                    self.ds_rndla_oc[i], self.ds_rgb_oc[i], kernel_size=(1, 1),
                     bn=True
-                ) #ZJ # 1. channel 64 -> 128; 2. channel 128 -> 256
-                  #  3. channel 256 -> 1024; 4. channel 512 -> 2048
-            )
-            ######################### add SA & cross attention layer #################
-            # self.ds_sa_fuse_r2p_layers.append(
-            #     # SA_Layer(self.ds_rgb_oc[i])
-            #     R_TransformerBlock(self.ds_rgb_oc[i],num_heads=heads_ds[i],ffn_expansion_factor=2.66,bias=False,LayerNorm_type='WithBias')
-            # )
-            # self.ds_cs_fuse_r2p_layers.append(
-            #     CrossAttention_csvit(self.ds_rndla_oc[i],num_heads=heads_ds[i])
-            # )
-            self.ds_dftr_layer.append(
-                DFTr(d_model=ds_pre_fusion_dim[i],n_layer=num_fusion_layer_ds[i],rgb_anchors=ds_rgb_anchor[i],point_anchors=rndla_cfg.num_sub_points[i])
-            )
-            ######################### add SA & cross attention layer #################
-            self.ds_fuse_r2p_fuse_layers.append(
-                pt_utils.Conv2d(
-                    ds_pre_fusion_dim[i], self.ds_rgb_oc[i], kernel_size=(1, 1),
-                    bn=True
-                ) #ZJ # 1. channel 128 -> 64; 2. channel 256 -> 128
-                      # 3. channel 1024 -> 512; 4. channel 2048 -> 1024
+                )
             )
             self.ds_fuse_p2r_fuse_layers.append(
                 pt_utils.Conv2d(
-                    ds_pre_fusion_dim[i], self.ds_rndla_oc[i], kernel_size=(1, 1),
+                    self.ds_rgb_oc[i]*2, self.ds_rgb_oc[i], kernel_size=(1, 1),
                     bn=True
-                )#ZJ # 1. channel 128 -> 64; 2. channel 256 -> 128
-                  #  3. channel 1024 -> 256; 4. channel 2048 -> 512
+                )
             )
-        self.ds_dftr_layer = nn.Sequential(*self.ds_dftr_layer)
+
         # ###################### upsample stages #############################
         self.cnn_up_stages = nn.ModuleList([
             nn.Sequential(cnn.up_1, cnn.drop_2),  # [bs, 256, 120, 160]
@@ -118,10 +87,10 @@ class FFB6D(nn.Module):
             nn.Sequential(cnn.up_3, cnn.final)  # [bs, 64, 480, 640]
         ])
         self.up_rgb_oc = [256, 64, 64]
-        self.up_rndla_oc = [] #[256, 128, 64, 64]  # feature dimension
+        self.up_rndla_oc = []
         for j in range(rndla_cfg.num_layers):
             if j < 3:
-                self.up_rndla_oc.append(self.ds_rndla_oc[-j-2]) #d_out = [32, 64, 128, 256]  # feature dimension
+                self.up_rndla_oc.append(self.ds_rndla_oc[-j-2])
             else:
                 self.up_rndla_oc.append(self.ds_rndla_oc[0])
 
@@ -132,68 +101,32 @@ class FFB6D(nn.Module):
         self.up_fuse_r2p_fuse_layers = nn.ModuleList()
         self.up_fuse_p2r_pre_layers = nn.ModuleList()
         self.up_fuse_p2r_fuse_layers = nn.ModuleList()
-        # self.up_sa_fuse_r2p_layers = nn.ModuleList() # SA attention 层
-        # self.up_sa_fuse_p2r_layers = nn.ModuleList() # SA attention 层
-        # self.up_cs_fuse_r2p_layers = nn.ModuleList() # cross attention 层
-        # self.up_cs_fuse_p2r_layers = nn.ModuleList() # cross attention 层
-        self.up_dftr_layer = nn.ModuleList() # Deep fusion transfomer layer
-        num_fusion_layer_up = [1,1,1]
-        up_pre_fusion_dim = [512,128,128]
-        up_rgb_anchor = [image_anchors // 16, image_anchors // 4, image_anchors // 1]
-
         for i in range(n_fuse_layer):
-            if i > 0:
-                continue
             self.up_fuse_r2p_pre_layers.append(
                 pt_utils.Conv2d(
-                    self.up_rgb_oc[i], up_pre_fusion_dim[i], kernel_size=(1, 1),
+                    self.up_rgb_oc[i], self.up_rndla_oc[i], kernel_size=(1, 1),
                     bn=True
                 )
-                #ZJ # 1. channel 256 -> 512; 2. channel 64 -> 128
-                  #  3. channel 64 -> 128;
+            )
+            self.up_fuse_r2p_fuse_layers.append(
+                pt_utils.Conv2d(
+                    self.up_rndla_oc[i]*2, self.up_rndla_oc[i], kernel_size=(1, 1),
+                    bn=True
+                )
             )
 
             self.up_fuse_p2r_pre_layers.append(
                 pt_utils.Conv2d(
-                    self.up_rndla_oc[i], up_pre_fusion_dim[i], kernel_size=(1, 1),
+                    self.up_rndla_oc[i], self.up_rgb_oc[i], kernel_size=(1, 1),
                     bn=True
                 )
-                #ZJ # 1. channel 256 -> 512; 2. channel 128 -> 128
-                  #  3. channel 64 -> 128;
-            )
-
-            ######################### add SA & cross attention layer #################
-            # self.up_sa_fuse_r2p_layers.append(
-            #     # SA_Layer(self.up_rgb_oc[i])
-            #     R_TransformerBlock(self.up_rgb_oc[i],num_heads=heads_up[i],ffn_expansion_factor=2.66,bias=False,LayerNorm_type='WithBias')
-            # )
-            # self.up_cs_fuse_r2p_layers.append(
-            #     CrossAttention_csvit(self.up_rndla_oc[i],num_heads=heads_up[i])
-            # )
-            self.up_dftr_layer.append(
-                DFTr(d_model=up_pre_fusion_dim[i], n_layer=num_fusion_layer_up[i],rgb_anchors=up_rgb_anchor[i],point_anchors=rndla_cfg.num_sub_points[-i-2])
-            )
-            ######################### add SA & cross attention layer #################
-            self.up_fuse_r2p_fuse_layers.append(
-                pt_utils.Conv2d(
-                    up_pre_fusion_dim[i], self.up_rgb_oc[i], kernel_size=(1, 1),
-                    bn=True
-                )
-                #ZJ # 1. channel 512 -> 256; 2. channel 256 -> 128
-                  #  3. channel 128 -> 64;
             )
             self.up_fuse_p2r_fuse_layers.append(
                 pt_utils.Conv2d(
-                    up_pre_fusion_dim[i], self.up_rndla_oc[i], kernel_size=(1, 1),
+                    self.up_rgb_oc[i]*2, self.up_rgb_oc[i], kernel_size=(1, 1),
                     bn=True
                 )
-                #ZJ # 1. channel 512 -> 256; 2. channel 128 -> 64
-                  #  3. channel 128 -> 64;
             )
-        self.up_dftr_layer = nn.Sequential(*self.up_dftr_layer)
-        #### FINAL Fusion layer
-        # self.final_fusion_layer = C_CrossAttention(64)
-        self.final_fusion_layer = DenseFusion(self.n_pts)
 
         # ####################### prediction headers #############################
         # We use 3D keypoint prediction header for pose estimation following PVN3D
@@ -260,8 +193,6 @@ class FFB6D(nn.Module):
         interpolated_features = interpolated_features.unsqueeze(3)  # batch*channel*npoints*1
         return interpolated_features
 
-
-
     def _break_up_pc(self, pc):
         xyz = pc[:, :3, :].transpose(1, 2).contiguous()
         features = (
@@ -302,7 +233,6 @@ class FFB6D(nn.Module):
             rgb_emb0 = self.cnn_ds_stages[i_ds](rgb_emb)
             bs, c, hr, wr = rgb_emb0.size()
 
-            print("rgb_emb0{0} shape: {1}".format(i_ds, rgb_emb0.shape))
             # encode point cloud downsampled feature
             f_encoder_i = self.rndla_ds_stages[i_ds](
                 p_emb, inputs['cld_xyz%d' % i_ds], inputs['cld_nei_idx%d' % i_ds]
@@ -312,21 +242,24 @@ class FFB6D(nn.Module):
             if i_ds == 0:
                 ds_emb.append(f_encoder_i)
 
-            # fuse point feauture to rgb feature and fuse rgb feature to point feature
-            if i_ds in [3]:
-                rgb_emb0_fuse = self.ds_fuse_r2p_pre_layers[i_ds-3](rgb_emb0) # [bs, 128, h,w]
-                p_emb0_fuse = self.ds_fuse_p2r_pre_layers[i_ds-3](p_emb0) # [bs, 128, N, 1]
-                # temp_feat = (rgb_emb0.view(bs,-1,hr*wr), p_emb0.squeeze(dim=3))
-                att_fea_rgb_DS, att_fea_pts_DS = self.ds_dftr_layer[i_ds-3]((rgb_emb0_fuse.view(bs,-1,hr*wr), p_emb0_fuse.squeeze(dim=3)))
-                # print("rgb_emb0 shape: {0}".format(rgb_emb0.shape))
-                # print("att_fea_rgb_DS shape: {0}".format(att_fea_rgb_DS.shape))
-                # print("processed shape: {0}".format(self.ds_fuse_r2p_fuse_layers[i_ds](att_fea_rgb_DS.view(bs, -1, hr, wr)).shape))
-                rgb_emb = rgb_emb0 + self.ds_fuse_r2p_fuse_layers[i_ds-3](att_fea_rgb_DS.view(bs, -1, hr, wr)) #[b,c,h,w]
-                p_emb = p_emb0 + self.ds_fuse_p2r_fuse_layers[i_ds-3](att_fea_pts_DS.unsqueeze(dim=3)) #[b,c,n,1]
-            else:
-                rgb_emb = rgb_emb0
-                p_emb = p_emb0
+            # fuse point feauture to rgb feature
+            p2r_emb = self.ds_fuse_p2r_pre_layers[i_ds](p_emb0)
+            p2r_emb = self.nearest_interpolation(
+                p2r_emb, inputs['p2r_ds_nei_idx%d' % i_ds]
+            )
+            p2r_emb = p2r_emb.view(bs, -1, hr, wr)
+            rgb_emb = self.ds_fuse_p2r_fuse_layers[i_ds](
+                torch.cat((rgb_emb0, p2r_emb), dim=1)
+            )
 
+            # fuse rgb feature to point feature
+            r2p_emb = self.random_sample(
+                rgb_emb0.reshape(bs, c, hr*wr, 1), inputs['r2p_ds_nei_idx%d' % i_ds]
+            ).view(bs, c, -1, 1)
+            r2p_emb = self.ds_fuse_r2p_pre_layers[i_ds](r2p_emb)
+            p_emb = self.ds_fuse_r2p_fuse_layers[i_ds](
+                torch.cat((p_emb0, r2p_emb), dim=1)
+            )
             ds_emb.append(p_emb)
 
         # ###################### decoding stages #############################
@@ -345,18 +278,24 @@ class FFB6D(nn.Module):
             )
             p_emb0 = f_decoder_i
 
-            # fuse point feauture to rgb feature and fuse rgb feature to point feature
-            if i_up in [0]:
-                p_emb0_fuse = self.up_fuse_p2r_pre_layers[i_up](p_emb0) #[bs,c,n,1]
-                rgb_emb0_fuse = self.up_fuse_r2p_pre_layers[i_up](rgb_emb0) #[bs,c,h,w]
-                # temp_feat = (rgb_emb0.view(bs,-1,hr*wr), p_emb0.squeeze(dim=3))
-                att_fea_rgb_DS, att_fea_pts_DS = self.up_dftr_layer[i_up]((rgb_emb0_fuse.view(bs,-1,hr*wr), p_emb0_fuse.squeeze(dim=3)))
-                rgb_emb = rgb_emb0 + self.up_fuse_r2p_fuse_layers[i_up](att_fea_rgb_DS.view(bs, -1, hr, wr)) #[b,c,h,w]
-                p_emb = p_emb0 + self.up_fuse_p2r_fuse_layers[i_up](att_fea_pts_DS.unsqueeze(dim=3)) #[b,c,n,1]
-            else:
-                rgb_emb = rgb_emb0
-                p_emb = p_emb0
-            ############### Modified by ZJ R2P ##################
+            # fuse point feauture to rgb feature
+            p2r_emb = self.up_fuse_p2r_pre_layers[i_up](p_emb0)
+            p2r_emb = self.nearest_interpolation(
+                p2r_emb, inputs['p2r_up_nei_idx%d' % i_up]
+            )
+            p2r_emb = p2r_emb.view(bs, -1, hr, wr)
+            rgb_emb = self.up_fuse_p2r_fuse_layers[i_up](
+                torch.cat((rgb_emb0, p2r_emb), dim=1)
+            )
+
+            # fuse rgb feature to point feature
+            r2p_emb = self.random_sample(
+                rgb_emb0.reshape(bs, c, hr*wr), inputs['r2p_up_nei_idx%d' % i_up]
+            ).view(bs, c, -1, 1)
+            r2p_emb = self.up_fuse_r2p_pre_layers[i_up](r2p_emb)
+            p_emb = self.up_fuse_r2p_fuse_layers[i_up](
+                torch.cat((p_emb0, r2p_emb), dim=1)
+            )
 
         # final upsample layers:
         rgb_emb = self.cnn_up_stages[n_up_layers-1](rgb_emb)
@@ -373,7 +312,7 @@ class FFB6D(nn.Module):
         rgb_emb_c = torch.gather(rgb_emb_c, 2, choose_emb).contiguous()
 
         # Use DenseFusion in final layer, which will hurt performance due to overfitting
-        rgbd_emb = self.final_fusion_layer(rgb_emb_c, p_emb)
+        # rgbd_emb = self.fusion_layer(rgb_emb, pcld_emb)
 
         # Use simple concatenation. Good enough for fully fused RGBD feature.
         rgbd_emb = torch.cat([rgb_emb_c, p_emb], dim=1)
