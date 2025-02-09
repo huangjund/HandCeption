@@ -58,6 +58,8 @@ pkg-config --modversion opencv4
 # Train the model
 
 ```angular2html
+n_gpu=8
+cls='ape'
 torchrun --nproc_per_node=$n_gpu train_lm.py --gpus=$n_gpu --cls=$cls
 ```
 
