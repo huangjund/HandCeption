@@ -30,7 +30,7 @@ class MeshUtils():
                     item.strip() for item in line.split(' ')
                     if len(item.strip()) > 0 and 'v' not in item
                 ]
-                xyz = np.array(xyz_str[0:3]).astype(np.float)
+                xyz = np.array(xyz_str[0:3]).astype(float)
                 xyz_lst.append(xyz)
         return np.array(xyz_lst) / scale2m
 

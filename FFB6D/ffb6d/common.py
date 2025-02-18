@@ -66,6 +66,7 @@ class Config:
         self.noise_trans = 0.05  # range of the random noise of translation added to the training data
 
         self.preprocessed_testset_pth = ''
+
         if self.dataset_name == 'ycb':
             self.n_objects = 21 + 1  # 21 objects + background
             self.n_classes = self.n_objects
@@ -95,7 +96,8 @@ class Config:
             self.ycb_r_lst = list(np.loadtxt(ycb_r_lst_p))
             self.ycb_cls_lst = self.read_lines(self.ycb_cls_lst_p)
             self.ycb_sym_cls_ids = [13, 16, 19, 20, 21]
-        else:  # linemod
+
+        elif self.dataset_name == 'linemod':
             self.n_objects = 1 + 1  # 1 object + background
             self.n_classes = self.n_objects
             self.lm_cls_lst = [
@@ -137,23 +139,59 @@ class Config:
 
             lm_r_pth = os.path.join(self.lm_root, "dataset_config/models_info.yml")
             lm_r_file = open(os.path.join(lm_r_pth), "r")
-            self.lm_r_lst = yaml.load(lm_r_file,Loader=yaml.FullLoader)
+            self.lm_r_lst = yaml.load(lm_r_file, Loader=yaml.FullLoader)
 
             self.val_nid_ptn = "/data/6D_Pose_Data/datasets/LINEMOD/pose_nori_lists/{}_real_val.nori.list"
 
+        elif self.dataset_name == 'test':  # Add "test" dataset logic
+            # Define the number of objects and classes for the "test" dataset
+            self.n_objects = 1 + 1  # Assuming 10 objects + background (you can adjust)
+            self.n_classes = self.n_objects
+
+            # Paths and specific configurations for the test dataset
+            self.use_orbfps = True
+            self.kp_orbfps_dir = 'datasets/test/test_kps/'
+            self.kp_orbfps_ptn = os.path.join(self.kp_orbfps_dir, '%s_%d_kps.txt')
+            self.test_cls_lst_p = os.path.abspath(
+                os.path.join(
+                    self.exp_dir, 'datasets/test/dataset_config/classes.txt'
+                )
+            )
+            self.test_root = os.path.abspath(
+                os.path.join(
+                    self.exp_dir, 'datasets/test/Test_Dataset'
+                )
+            )
+            self.test_kps_dir = os.path.abspath(
+                os.path.join(
+                    self.exp_dir, 'datasets/test/test_kps/'
+                )
+            )
+            test_r_lst_p = os.path.abspath(
+                os.path.join(
+                    self.exp_dir, 'datasets/test/dataset_config/radius.txt'
+                )
+            )
+            self.test_r_lst = list(np.loadtxt(test_r_lst_p))
+            self.test_cls_lst = self.read_lines(self.test_cls_lst_p)
+            self.test_sym_cls_ids = [3]
+
         self.intrinsic_matrix = {
-            'linemod': np.array([[572.4114, 0.,         325.2611],
-                                [0.,        573.57043,  242.04899],
-                                [0.,        0.,         1.]]),
-            'blender': np.array([[700.,     0.,     320.],
-                                 [0.,       700.,   240.],
-                                 [0.,       0.,     1.]]),
-            'ycb_K1': np.array([[1066.778, 0.        , 312.9869],
-                                [0.      , 1067.487  , 241.3109],
-                                [0.      , 0.        , 1.0]], np.float32),
-            'ycb_K2': np.array([[1077.836, 0.        , 323.7872],
-                                [0.      , 1078.189  , 279.6921],
-                                [0.      , 0.        , 1.0]], np.float32)
+            'linemod': np.array([[572.4114, 0., 325.2611],
+                                 [0., 573.57043, 242.04899],
+                                 [0., 0., 1.]]),
+            'blender': np.array([[700., 0., 320.],
+                                 [0., 700., 240.],
+                                 [0., 0., 1.]]),
+            'ycb_K1': np.array([[1066.778, 0., 312.9869],
+                                [0., 1067.487, 241.3109],
+                                [0., 0., 1.0]], np.float32),
+            'ycb_K2': np.array([[1077.836, 0., 323.7872],
+                                [0., 1078.189, 279.6921],
+                                [0., 0., 1.0]], np.float32),
+            'test': np.array([[800., 0., 320.],  # Example intrinsic matrix for the "test" dataset
+                              [0., 800., 240.],
+                              [0., 0., 1.]], np.float32)
         }
 
     def read_lines(self, p):

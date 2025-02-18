@@ -38,7 +38,8 @@ from apex.parallel import DistributedDataParallel
 from apex.parallel import convert_syncbn_model
 from apex import amp
 from apex.multi_tensor_apply import multi_tensor_applier
-
+# import pydevd_pycharm
+# pydevd_pycharm.settrace('localhost', port=23456, stdoutToServer=True, stderrToServer=True)
 
 parser = argparse.ArgumentParser(description="Arg parser")
 parser.add_argument(
@@ -261,17 +262,17 @@ def model_fn_decorator(
             _, cls_rgbd = torch.max(end_points['pred_rgbd_segs'], 1)
             acc_rgbd = (cls_rgbd == labels).float().sum() / labels.numel()
 
-            if args.debug:
-                show_lb = view_labels(
-                    data['rgb'], data['cld_rgb_nrm'][0, :3, :], cls_rgbd
-                )
-                show_gt_lb = view_labels(
-                    data['rgb'], data['cld_rgb_nrm'][0, :3, :],
-                    cu_dt['labels'].squeeze()
-                )
-                imshow("pred_lb", show_lb)
-                imshow('gt_lb', show_gt_lb)
-                waitKey(0)
+            # if args.debug:
+            #     show_lb = view_labels(
+            #         data['rgb'], data['cld_rgb_nrm'][0, :3, :], cls_rgbd
+            #     )
+            #     show_gt_lb = view_labels(
+            #         data['rgb'], data['cld_rgb_nrm'][0, :3, :],
+            #         cu_dt['labels'].squeeze()
+            #     )
+            #     imshow("pred_lb", show_lb)
+            #     imshow('gt_lb', show_gt_lb)
+            #     waitKey(0)
 
             loss_dict = {
                 'loss_rgbd_seg': loss_rgbd_seg.item(),
@@ -565,18 +566,18 @@ def train():
     torch.manual_seed(0)
 
     if not args.eval_net:
-        train_ds = dataset_desc.Dataset('train', cls_type=args.cls)
+        train_ds = dataset_desc.Dataset('train', cls_type=args.cls, DEBUG=args.debug)
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_ds)
         train_loader = torch.utils.data.DataLoader(
             train_ds, batch_size=config.mini_batch_size, shuffle=False,
-            drop_last=True, num_workers=4, sampler=train_sampler, pin_memory=True
+            drop_last=True, num_workers=8, sampler=train_sampler, pin_memory=True
         )
 
         val_ds = dataset_desc.Dataset('test', cls_type=args.cls)
         val_sampler = torch.utils.data.distributed.DistributedSampler(val_ds)
         val_loader = torch.utils.data.DataLoader(
             val_ds, batch_size=config.val_mini_batch_size, shuffle=False,
-            drop_last=False, num_workers=4, sampler=val_sampler
+            drop_last=False, num_workers=8, sampler=val_sampler
         )
     else:
         test_ds = dataset_desc.Dataset('test', cls_type=args.cls)
@@ -627,6 +628,7 @@ def train():
             model, device_ids=[args.local_rank], output_device=args.local_rank,
             find_unused_parameters=True
         )
+        print("=========here======")
         clr_div = 2
         lr_scheduler = CyclicLR(
             optimizer, base_lr=1e-5, max_lr=1e-3,

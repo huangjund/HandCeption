@@ -49,7 +49,7 @@ class Dataset():
             real_img_pth = os.path.join(
                 self.cls_root, "train.txt"
             )
-            self.real_lst = self.bs_utils.read_lines(real_img_pth)
+            self.real_lst = [] #self.bs_utils.read_lines(real_img_pth)
 
             rnd_img_ptn = os.path.join(
                 self.root, 'renders/%s/*.pkl' % cls_type
@@ -82,7 +82,7 @@ class Dataset():
             self.all_lst = self.tst_lst
         print("{}_dataset_size: ".format(dataset_name), len(self.all_lst))
 
-    def real_syn_gen(self, real_ratio=0.3):
+    def real_syn_gen(self, real_ratio=0): # 0.3 in normal
         if len(self.rnd_lst+self.fuse_lst) == 0:
             real_ratio = 1.0
         if self.rng.rand() < real_ratio:  # real
@@ -164,25 +164,41 @@ class Dataset():
         return np.clip(img, 0, 255).astype(np.uint8)
 
     def add_real_back(self, rgb, labels, dpt, dpt_msk):
+        # Generate a random real image path from the dataset
         real_item = self.real_gen()
-        with Image.open(os.path.join(self.cls_root, "depth", real_item+'.png')) as di:
+
+        # Load the depth image of the real background
+        with Image.open(os.path.join(self.cls_root, "depth", real_item + '.png')) as di:
             real_dpt = np.array(di)
-        with Image.open(os.path.join(self.cls_root, "mask", real_item+'.png')) as li:
+
+        # Load the mask of the real background
+        with Image.open(os.path.join(self.cls_root, "mask", real_item + '.png')) as li:
             bk_label = np.array(li)
+
+        # Convert the mask to a binary format (0 for background, 1 for foreground)
         bk_label = (bk_label < 255).astype(rgb.dtype)
+
+        # Ensure the mask is 2D (if it has extra dimensions, take the first channel)
         if len(bk_label.shape) > 2:
             bk_label = bk_label[:, :, 0]
-        with Image.open(os.path.join(self.cls_root, "rgb", real_item+'.png')) as ri:
+
+        # Load the RGB background image and apply the mask to remove background pixels
+        with Image.open(os.path.join(self.cls_root, "rgb", real_item + '.png')) as ri:
             back = np.array(ri)[:, :, :3] * bk_label[:, :, None]
+
+        # Convert the real depth image to float and apply the mask to remove background depth values
         dpt_back = real_dpt.astype(np.float32) * bk_label.astype(np.float32)
 
+        # With 60% probability, replace the background pixels in the input RGB image with real background
         if self.rng.rand() < 0.6:
-            msk_back = (labels <= 0).astype(rgb.dtype)
-            msk_back = msk_back[:, :, None]
-            rgb = rgb * (msk_back == 0).astype(rgb.dtype) + back * msk_back
+            msk_back = (labels <= 0).astype(rgb.dtype)  # Create mask for background pixels
+            msk_back = msk_back[:, :, None]  # Expand dimensions for broadcasting
+            rgb = rgb * (msk_back == 0).astype(rgb.dtype) + back * msk_back  # Blend background
 
+        # Replace background depth values where depth mask is invalid
         dpt = dpt * (dpt_msk > 0).astype(dpt.dtype) + \
-            dpt_back * (dpt_msk <= 0).astype(dpt.dtype)
+              dpt_back * (dpt_msk <= 0).astype(dpt.dtype)
+
         return rgb, dpt
 
     def dpt_2_pcld(self, dpt, cam_scale, K):
@@ -199,122 +215,178 @@ class Dataset():
         return dpt_3d
 
     def get_item(self, item_name):
+        # Check if the item is a .pkl file (rendered or fused data)
         if "pkl" in item_name:
             data = pkl.load(open(item_name, "rb"))
             dpt_mm = data['depth'] * 1000.
+            # Extract RGB, mask labels, camera intrinsic matrix, and pose
             rgb = data['rgb']
             labels = data['mask']
             K = data['K']
             RT = data['RT']
+            # Identify the type of rendered data (fused or normal render)
             rnd_typ = data['rnd_typ']
+
+            # Process labels based on the type of data
             if rnd_typ == "fuse":
-                labels = (labels == self.cls_id).astype("uint8")
+                labels = (labels == self.cls_id).astype("uint8")  # Only keep labels matching cls_id
             else:
-                labels = (labels > 0).astype("uint8")
+                labels = (labels > 0).astype("uint8")  # Convert labels to binary mask
         else:
-            with Image.open(os.path.join(self.cls_root, "depth/{}.png".format(item_name))) as di:
+            # Load real data from depth, mask, and RGB images
+            with Image.open(os.path.join(self.cls_root, f"depth/{item_name}.png")) as di:
                 dpt_mm = np.array(di)
-            with Image.open(os.path.join(self.cls_root, "mask/{}.png".format(item_name))) as li:
+
+            with Image.open(os.path.join(self.cls_root, f"mask/{item_name}.png")) as li:
                 labels = np.array(li)
-                labels = (labels > 0).astype("uint8")
-            with Image.open(os.path.join(self.cls_root, "rgb/{}.png".format(item_name))) as ri:
+                labels = (labels > 0).astype("uint8")  # Convert to binary mask
+
+            with Image.open(os.path.join(self.cls_root, f"rgb/{item_name}.png")) as ri:
                 if self.add_noise:
-                    ri = self.trancolor(ri)
-                rgb = np.array(ri)[:, :, :3]
+                    ri = self.trancolor(ri)  # Apply color transformation if noise is enabled
+                rgb = np.array(ri)[:, :, :3]  # Extract RGB channels
+
+            # Retrieve the corresponding metadata for the item
             meta = self.meta_lst[int(item_name)]
+
+            # Special handling for class ID 2 (loop through metadata to find the right object)
             if self.cls_id == 2:
-                for i in range(0, len(meta)):
+                for i in range(len(meta)):
                     if meta[i]['obj_id'] == 2:
                         meta = meta[i]
                         break
             else:
-                meta = meta[0]
+                meta = meta[0]  # Otherwise, take the first metadata entry
+
+            # Extract camera pose (rotation and translation) and reshape R
             R = np.resize(np.array(meta['cam_R_m2c']), (3, 3))
-            T = np.array(meta['cam_t_m2c']) / 1000.0
-            RT = np.concatenate((R, T[:, None]), axis=1)
-            rnd_typ = 'real'
-            K = self.config.intrinsic_matrix["linemod"]
-        cam_scale = 1000.0
+            T = np.array(meta['cam_t_m2c']) / 1000.0  # Convert translation to meters
+            RT = np.concatenate((R, T[:, None]), axis=1)  # Create transformation matrix
+
+            rnd_typ = 'real'  # Mark data type as real
+            K = self.config.intrinsic_matrix["linemod"]  # Load intrinsic matrix
+
+        cam_scale = 1000.0  # Scaling factor for depth
+
+        # Ensure labels are 2D by extracting a single channel if needed
         if len(labels.shape) > 2:
             labels = labels[:, :, 0]
-        rgb_labels = labels.copy()
-        # if self.add_noise and rnd_typ == 'render':
+
+        rgb_labels = labels.copy()  # Keep a copy of the labels for RGB processing
+
+        # Add noise to rendered data (not real data) and blend with real backgrounds
         if self.add_noise and rnd_typ != 'real':
             if rnd_typ == 'render' or self.rng.rand() < 0.8:
                 rgb = self.rgb_add_noise(rgb)
                 rgb_labels = labels.copy()
-                msk_dp = dpt_mm > 1e-6
-                rgb, dpt_mm = self.add_real_back(rgb, rgb_labels, dpt_mm, msk_dp)
+                msk_dp = dpt_mm > 1e-6  # Mask for valid depth pixels
+                # rgb, dpt_mm = self.add_real_back(rgb, rgb_labels, dpt_mm, msk_dp)
+
+                # Additional noise augmentation with some probability
                 if self.rng.rand() > 0.8:
                     rgb = self.rgb_add_noise(rgb)
 
+        # Display blendered rgb map if debugging mode is enabled
+        if self.DEBUG:
+            show_real_back_map = rgb
+            imshow("blender_rgb_map", show_real_back_map)
+            waitKey(0)
+
+        # Convert depth map to 16-bit unsigned integer format for further processing
         dpt_mm = dpt_mm.copy().astype(np.uint16)
+
+        # Compute surface normal map from depth image using normalSpeed algorithm
         nrm_map = normalSpeed.depth_normal(
             dpt_mm, K[0][0], K[1][1], 5, 2000, 20, False
         )
+
+        # Display normal map if debugging mode is enabled
         if self.DEBUG:
             show_nrm_map = ((nrm_map + 1.0) * 127).astype(np.uint8)
             imshow("nrm_map", show_nrm_map)
+            waitKey(0)
 
+        # Convert depth from millimeters to meters
         dpt_m = dpt_mm.astype(np.float32) / cam_scale
-        dpt_xyz = self.dpt_2_pcld(dpt_m, 1.0, K)
-        dpt_xyz[np.isnan(dpt_xyz)] = 0.0
-        dpt_xyz[np.isinf(dpt_xyz)] = 0.0
 
+        # Convert depth map to 3D point cloud
+        dpt_xyz = self.dpt_2_pcld(dpt_m, 1.0, K)
+        dpt_xyz[np.isnan(dpt_xyz)] = 0.0  # Replace NaN values with 0
+        dpt_xyz[np.isinf(dpt_xyz)] = 0.0  # Replace infinite values with 0
+
+        # Create a mask for valid depth values
         msk_dp = dpt_mm > 1e-6
         choose = msk_dp.flatten().nonzero()[0].astype(np.uint32)
+
+        # Ensure there are enough valid depth points
         if len(choose) < 400:
             return None
+
+        # Generate a sequential index list
         choose_2 = np.array([i for i in range(len(choose))])
         if len(choose_2) < 400:
             return None
+
+        # Downsample point selection if too many points exist
         if len(choose_2) > self.config.n_sample_points:
             c_mask = np.zeros(len(choose_2), dtype=int)
             c_mask[:self.config.n_sample_points] = 1
             np.random.shuffle(c_mask)
             choose_2 = choose_2[c_mask.nonzero()]
         else:
-            choose_2 = np.pad(choose_2, (0, self.config.n_sample_points-len(choose_2)), 'wrap')
+            choose_2 = np.pad(choose_2, (0, self.config.n_sample_points - len(choose_2)), 'wrap')
+
+        # Select valid depth points
         choose = np.array(choose)[choose_2]
 
+        # Shuffle selected points
         sf_idx = np.arange(choose.shape[0])
         np.random.shuffle(sf_idx)
         choose = choose[sf_idx]
 
+        # Extract corresponding 3D points, RGB values, and normal vectors
         cld = dpt_xyz.reshape(-1, 3)[choose, :]
         rgb_pt = rgb.reshape(-1, 3)[choose, :].astype(np.float32)
         nrm_pt = nrm_map[:, :, :3].reshape(-1, 3)[choose, :]
         labels_pt = labels.flatten()[choose]
         choose = np.array([choose])
+
+        # Concatenate 3D point cloud, RGB values, and normal vectors
         cld_rgb_nrm = np.concatenate((cld, rgb_pt, nrm_pt), axis=1).transpose(1, 0)
 
+        # Retrieve ground-truth pose information
         RTs, kp3ds, ctr3ds, cls_ids, kp_targ_ofst, ctr_targ_ofst = self.get_pose_gt_info(
             cld, labels_pt, RT
         )
 
+        # Compute depth and normal maps for the entire image
         h, w = rgb_labels.shape
         dpt_6c = np.concatenate((dpt_xyz, nrm_map[:, :, :3]), axis=2).transpose(2, 0, 1)
-        rgb = np.transpose(rgb, (2, 0, 1))  # hwc2chw
+        rgb = np.transpose(rgb, (2, 0, 1))  # Convert RGB from HWC to CHW format
 
-        xyz_lst = [dpt_xyz.transpose(2, 0, 1)]  # c, h, w
+        # Multi-scale depth-to-point-cloud mapping
+        xyz_lst = [dpt_xyz.transpose(2, 0, 1)]  # Store depth-to-point cloud map
         msk_lst = [dpt_xyz[2, :, :] > 1e-8]
 
         for i in range(3):
-            scale = pow(2, i+1)
-            nh, nw = h // pow(2, i+1), w // pow(2, i+1)
+            scale = pow(2, i + 1)
+            nh, nw = h // pow(2, i + 1), w // pow(2, i + 1)
             ys, xs = np.mgrid[:nh, :nw]
-            xyz_lst.append(xyz_lst[0][:, ys*scale, xs*scale])
+            xyz_lst.append(xyz_lst[0][:, ys * scale, xs * scale])
             msk_lst.append(xyz_lst[-1][2, :, :] > 1e-8)
+
         sr2dptxyz = {
             pow(2, ii): item.reshape(3, -1).transpose(1, 0)
             for ii, item in enumerate(xyz_lst)
         }
 
+        # Downsampling configurations
         rgb_ds_sr = [4, 8, 8, 8]
         n_ds_layers = 4
         pcld_sub_s_r = [4, 4, 4, 4]
         inputs = {}
-        # DownSample stage
+
+        # Downsampling stage
         for i in range(n_ds_layers):
             nei_idx = DP.knn_search(
                 cld[None, ...], cld[None, ...], 16
@@ -324,59 +396,46 @@ class Dataset():
             up_i = DP.knn_search(
                 sub_pts[None, ...], cld[None, ...], 1
             ).astype(np.int32).squeeze(0)
+
             inputs['cld_xyz%d' % i] = cld.astype(np.float32).copy()
             inputs['cld_nei_idx%d' % i] = nei_idx.astype(np.int32).copy()
             inputs['cld_sub_idx%d' % i] = pool_i.astype(np.int32).copy()
             inputs['cld_interp_idx%d' % i] = up_i.astype(np.int32).copy()
+
             nei_r2p = DP.knn_search(
                 sr2dptxyz[rgb_ds_sr[i]][None, ...], sub_pts[None, ...], 16
             ).astype(np.int32).squeeze(0)
             inputs['r2p_ds_nei_idx%d' % i] = nei_r2p.copy()
+
             nei_p2r = DP.knn_search(
                 sub_pts[None, ...], sr2dptxyz[rgb_ds_sr[i]][None, ...], 1
             ).astype(np.int32).squeeze(0)
             inputs['p2r_ds_nei_idx%d' % i] = nei_p2r.copy()
             cld = sub_pts
 
+        # Upsampling stage
         n_up_layers = 3
         rgb_up_sr = [4, 2, 2]
         for i in range(n_up_layers):
             r2p_nei = DP.knn_search(
                 sr2dptxyz[rgb_up_sr[i]][None, ...],
-                inputs['cld_xyz%d'%(n_ds_layers-i-1)][None, ...], 16
+                inputs['cld_xyz%d' % (n_ds_layers - i - 1)][None, ...], 16
             ).astype(np.int32).squeeze(0)
             inputs['r2p_up_nei_idx%d' % i] = r2p_nei.copy()
+
             p2r_nei = DP.knn_search(
-                inputs['cld_xyz%d'%(n_ds_layers-i-1)][None, ...],
+                inputs['cld_xyz%d' % (n_ds_layers - i - 1)][None, ...],
                 sr2dptxyz[rgb_up_sr[i]][None, ...], 1
             ).astype(np.int32).squeeze(0)
             inputs['p2r_up_nei_idx%d' % i] = p2r_nei.copy()
 
-        show_rgb = rgb.transpose(1, 2, 0).copy()[:, :, ::-1]
-        if self.DEBUG:
-            for ip, xyz in enumerate(xyz_lst):
-                pcld = xyz.reshape(3, -1).transpose(1, 0)
-                p2ds = self.bs_utils.project_p3d(pcld, cam_scale, K)
-                srgb = self.bs_utils.paste_p2ds(show_rgb.copy(), p2ds, (0, 0, 255))
-                # imshow("rz_pcld_%d" % ip, srgb)
-                p2ds = self.bs_utils.project_p3d(inputs['cld_xyz%d'%ip], cam_scale, K)
-                srgb1 = self.bs_utils.paste_p2ds(show_rgb.copy(), p2ds, (0, 0, 255))
-                # imshow("rz_pcld_%d_rnd" % ip, srgb1)
-        # print(
-        #     "kp3ds:", kp3ds.shape, kp3ds, "\n",
-        #     "kp3ds.mean:", np.mean(kp3ds, axis=0), "\n",
-        #     "ctr3ds:", ctr3ds.shape, ctr3ds, "\n",
-        #     "cls_ids:", cls_ids, "\n",
-        #     "labels.unique:", np.unique(labels),
-        # )
-
+        # Prepare final item dictionary for training
         item_dict = dict(
-            rgb=rgb.astype(np.uint8),  # [c, h, w]
-            cld_rgb_nrm=cld_rgb_nrm.astype(np.float32),  # [9, npts]
-            choose=choose.astype(np.int32),  # [1, npts]
-            labels=labels_pt.astype(np.int32),  # [npts]
-            rgb_labels=rgb_labels.astype(np.int32),  # [h, w]
-            dpt_map_m=dpt_m.astype(np.float32),  # [h, w]
+            rgb=rgb.astype(np.uint8),
+            cld_rgb_nrm=cld_rgb_nrm.astype(np.float32),
+            choose=choose.astype(np.int32),
+            labels=labels_pt.astype(np.int32),
+            dpt_map_m=dpt_m.astype(np.float32),
             RTs=RTs.astype(np.float32),
             kp_targ_ofst=kp_targ_ofst.astype(np.float32),
             ctr_targ_ofst=ctr_targ_ofst.astype(np.float32),
@@ -384,6 +443,7 @@ class Dataset():
             ctr_3ds=ctr3ds.astype(np.float32),
             kp_3ds=kp3ds.astype(np.float32),
         )
+
         item_dict.update(inputs)
         if self.DEBUG:
             extra_d = dict(
@@ -396,43 +456,56 @@ class Dataset():
         return item_dict
 
     def get_pose_gt_info(self, cld, labels, RT):
-        RTs = np.zeros((self.config.n_objects, 3, 4))
-        kp3ds = np.zeros((self.config.n_objects, self.config.n_keypoints, 3))
-        ctr3ds = np.zeros((self.config.n_objects, 3))
-        cls_ids = np.zeros((self.config.n_objects, 1))
-        kp_targ_ofst = np.zeros((self.config.n_sample_points, self.config.n_keypoints, 3))
-        ctr_targ_ofst = np.zeros((self.config.n_sample_points, 3))
-        for i, cls_id in enumerate([1]):
-            RTs[i] = RT
-            r = RT[:, :3]
-            t = RT[:, 3]
+        # Initialize arrays for storing ground truth pose information
+        RTs = np.zeros((self.config.n_objects, 3, 4))  # Rotation-Translation matrices
+        kp3ds = np.zeros((self.config.n_objects, self.config.n_keypoints, 3))  # Keypoint 3D locations
+        ctr3ds = np.zeros((self.config.n_objects, 3))  # Object center 3D locations
+        cls_ids = np.zeros((self.config.n_objects, 1))  # Object class IDs
+        kp_targ_ofst = np.zeros((self.config.n_sample_points, self.config.n_keypoints, 3))  # Keypoint offsets
+        ctr_targ_ofst = np.zeros((self.config.n_sample_points, 3))  # Center offsets
 
-            ctr = self.bs_utils.get_ctr(self.cls_type, ds_type="linemod")[:, None]
-            ctr = np.dot(ctr.T, r.T) + t
-            ctr3ds[i, :] = ctr[0]
+        # Iterate over object class IDs (currently hardcoded for class_id = 1)
+        for i, cls_id in enumerate([1]):
+            # Store the provided rotation-translation (RT) matrix
+            RTs[i] = RT
+            r = RT[:, :3]  # Extract rotation matrix (3x3)
+            t = RT[:, 3]  # Extract translation vector (3,)
+
+            # Compute the transformed object center
+            ctr = self.bs_utils.get_ctr(self.cls_type, ds_type="linemod")[:, None]  # Get object center
+            ctr = np.dot(ctr.T, r.T) + t  # Apply transformation
+            ctr3ds[i, :] = ctr[0]  # Store transformed center
+
+            # Get indices of points belonging to the current object class
             msk_idx = np.where(labels == cls_id)[0]
 
-            target_offset = np.array(np.add(cld, -1.0*ctr3ds[i, :]))
-            ctr_targ_ofst[msk_idx, :] = target_offset[msk_idx, :]
+            # Compute center offset for each point
+            target_offset = np.array(np.add(cld, -1.0 * ctr3ds[i, :]))  # Offset from center
+            ctr_targ_ofst[msk_idx, :] = target_offset[msk_idx, :]  # Store offsets for valid points
+
+            # Store class ID
             cls_ids[i, :] = np.array([1])
 
+            # Determine keypoint selection strategy
             self.minibatch_per_epoch = len(self.all_lst) // self.config.mini_batch_size
             if self.config.n_keypoints == 8:
-                kp_type = 'farthest'
+                kp_type = 'farthest'  # Use farthest point sampling for keypoints
             else:
-                kp_type = 'farthest{}'.format(self.config.n_keypoints)
-            kps = self.bs_utils.get_kps(
-                self.cls_type, kp_type=kp_type, ds_type='linemod'
-            )
-            kps = np.dot(kps, r.T) + t
-            kp3ds[i] = kps
+                kp_type = 'farthest{}'.format(self.config.n_keypoints)  # Adjust based on number of keypoints
 
+            # Get and transform keypoints using rotation and translation
+            kps = self.bs_utils.get_kps(self.cls_type, kp_type=kp_type, ds_type='linemod')
+            kps = np.dot(kps, r.T) + t  # Apply transformation
+            kp3ds[i] = kps  # Store transformed keypoints
+
+            # Compute keypoint offsets for each point
             target = []
             for kp in kps:
-                target.append(np.add(cld, -1.0*kp))
-            target_offset = np.array(target).transpose(1, 0, 2)  # [npts, nkps, c]
-            kp_targ_ofst[msk_idx, :, :] = target_offset[msk_idx, :, :]
+                target.append(np.add(cld, -1.0 * kp))  # Offset from each keypoint
+            target_offset = np.array(target).transpose(1, 0, 2)  # Reshape to [npts, nkps, c]
+            kp_targ_ofst[msk_idx, :, :] = target_offset[msk_idx, :, :]  # Store offsets for valid points
 
+        # Return computed pose information
         return RTs, kp3ds, ctr3ds, cls_ids, kp_targ_ofst, ctr_targ_ofst
 
     def __len__(self):
