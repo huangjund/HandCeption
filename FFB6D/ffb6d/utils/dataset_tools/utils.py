@@ -40,9 +40,10 @@ class MeshUtils():
         x = data['x']
         y = data['y']
         z = data['z']
-        r = data['red']
-        g = data['green']
-        b = data['blue']
+        # Check if 'red', 'green', 'blue' exist in the data, otherwise create them
+        r = data['red'] if 'red' in data.dtype.names else np.full_like(x, 123)
+        g = data['green'] if 'green' in data.dtype.names else np.full_like(x, 67)
+        b = data['blue'] if 'blue' in data.dtype.names else np.full_like(x, 23)
         face_raw = ply.elements[1].data
         face = []
         for item in face_raw:

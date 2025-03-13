@@ -527,7 +527,7 @@ class Dataset():
 def main():
     # config.mini_batch_size = 1
     ds = {}
-    cls = 'duck'
+    cls = 'ape'
     ds['train'] = Dataset('train', cls, DEBUG=True)
     ds['test'] = Dataset('test', cls, DEBUG=True)
     idx = dict(

@@ -1,2 +1,6 @@
 **/__pycache__/
 **/build/
+**/.idea/
+**/train_log
+blenderYCB/data_syn/
+blenderYCB/output/

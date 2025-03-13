@@ -96,7 +96,35 @@ class Config:
             self.ycb_r_lst = list(np.loadtxt(ycb_r_lst_p))
             self.ycb_cls_lst = self.read_lines(self.ycb_cls_lst_p)
             self.ycb_sym_cls_ids = [13, 16, 19, 20, 21]
-
+        elif self.dataset_name == 'test_ycb':
+            self.n_objects = 5 + 1  # 21 objects + background
+            self.n_classes = self.n_objects
+            self.use_orbfps = True
+            self.kp_orbfps_dir = 'datasets/test_ycb/ycb_kps/'
+            self.kp_orbfps_ptn = os.path.join(self.kp_orbfps_dir, '%s_%d_kps.txt')
+            self.ycb_cls_lst_p = os.path.abspath(
+                os.path.join(
+                    self.exp_dir, 'datasets/test_ycb/dataset_config/classes.txt'
+                )
+            )
+            self.ycb_root = os.path.abspath(
+                os.path.join(
+                    self.exp_dir, 'datasets/test_ycb/YCB_Video_Dataset'
+                )
+            )
+            self.ycb_kps_dir = os.path.abspath(
+                os.path.join(
+                    self.exp_dir, 'datasets/test_ycb/ycb_kps/'
+                )
+            )
+            ycb_r_lst_p = os.path.abspath(
+                os.path.join(
+                    self.exp_dir, 'datasets/test_ycb/dataset_config/radius.txt'
+                )
+            )
+            self.ycb_r_lst = list(np.loadtxt(ycb_r_lst_p))
+            self.ycb_cls_lst = self.read_lines(self.ycb_cls_lst_p)
+            # self.ycb_sym_cls_ids = [13, 16, 19, 20, 21]
         elif self.dataset_name == 'linemod':
             self.n_objects = 1 + 1  # 1 object + background
             self.n_classes = self.n_objects
@@ -147,34 +175,40 @@ class Config:
             # Define the number of objects and classes for the "test" dataset
             self.n_objects = 1 + 1  # Assuming 10 objects + background (you can adjust)
             self.n_classes = self.n_objects
-
-            # Paths and specific configurations for the test dataset
-            self.use_orbfps = True
-            self.kp_orbfps_dir = 'datasets/test/test_kps/'
-            self.kp_orbfps_ptn = os.path.join(self.kp_orbfps_dir, '%s_%d_kps.txt')
-            self.test_cls_lst_p = os.path.abspath(
-                os.path.join(
-                    self.exp_dir, 'datasets/test/dataset_config/classes.txt'
-                )
+            self.test_cls_lst = [
+                1, 2, 4, 5, 6
+            ]
+            self.test_sym_cls_ids = [4,6]
+            self.test_obj_dict = {
+                'base_link': 1,
+                'L2': 2,
+                'L3': 4,
+                'R2': 5,
+                'R3': 6,
+            }
+            try:
+                self.cls_id = self.test_obj_dict[cls_type]
+            except Exception:
+                pass
+            self.test_id2obj_dict = dict(
+                zip(self.test_obj_dict.values(), self.test_obj_dict.keys())
             )
             self.test_root = os.path.abspath(
-                os.path.join(
-                    self.exp_dir, 'datasets/test/Test_Dataset'
-                )
+                os.path.join(self.exp_dir, 'datasets/test/')
             )
-            self.test_kps_dir = os.path.abspath(
-                os.path.join(
-                    self.exp_dir, 'datasets/test/test_kps/'
-                )
+            self.use_orbfps = True
+            self.kp_orbfps_dir = 'datasets/test/kps_orb9_fps/'
+            self.kp_orbfps_ptn = os.path.join(self.kp_orbfps_dir, '%s_%d_kps.txt')
+            # FPS
+            self.test_fps_kps_dir = os.path.abspath(
+                os.path.join(self.exp_dir, 'datasets/test/test_obj_kps/')
             )
-            test_r_lst_p = os.path.abspath(
-                os.path.join(
-                    self.exp_dir, 'datasets/test/dataset_config/radius.txt'
-                )
-            )
-            self.test_r_lst = list(np.loadtxt(test_r_lst_p))
-            self.test_cls_lst = self.read_lines(self.test_cls_lst_p)
-            self.test_sym_cls_ids = [3]
+
+            test_r_pth = os.path.join(self.test_root, "dataset_config/models_info.yml")
+            test_r_file = open(os.path.join(test_r_pth), "r")
+            self.test_r_lst = yaml.load(test_r_file, Loader=yaml.FullLoader)
+
+            self.val_nid_ptn = "/data/6D_Pose_Data/datasets/TEST/pose_nori_lists/{}_real_val.nori.list"
 
         self.intrinsic_matrix = {
             'linemod': np.array([[572.4114, 0., 325.2611],
@@ -189,9 +223,12 @@ class Config:
             'ycb_K2': np.array([[1077.836, 0., 323.7872],
                                 [0., 1078.189, 279.6921],
                                 [0., 0., 1.0]], np.float32),
-            'test': np.array([[800., 0., 320.],  # Example intrinsic matrix for the "test" dataset
-                              [0., 800., 240.],
-                              [0., 0., 1.]], np.float32)
+            'test': np.array([[700., 0., 320.],  # Example intrinsic matrix for the "test" dataset
+                                  [0., 700., 240.],
+                                  [0., 0., 1.]], np.float32),
+            'ycb_test': np.array([[384.934, 0., 317.138],  # Example intrinsic matrix for the "test" dataset
+                                  [0., 384.934, 234.431],
+                                  [0., 0., 1.]], np.float32),
         }
 
     def read_lines(self, p):

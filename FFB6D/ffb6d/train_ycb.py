@@ -38,7 +38,8 @@ from apex.parallel import DistributedDataParallel
 from apex.parallel import convert_syncbn_model
 from apex import amp
 from apex.multi_tensor_apply import multi_tensor_applier
-
+import pydevd_pycharm
+pydevd_pycharm.settrace('localhost', port=32145, stdoutToServer=True, stderrToServer=True)
 
 config = Config()
 bs_utils = Basic_Utils(config)

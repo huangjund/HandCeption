@@ -1,0 +1,7 @@
+data_syn/000003
+data_syn/000004
+data_syn/000005
+data_syn/000006
+data_syn/000007
+data_syn/000008
+data_syn/000009

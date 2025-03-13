@@ -35,7 +35,7 @@ parser.add_argument(
     '--w', type=int, default=640, help="width of rendered RGBD images."
 )
 parser.add_argument(
-    '--K', type=int, default=[700, 0, 320, 0, 700, 240, 0, 0, 1],
+    '--K', type=int, default=[384.934, 0, 317.138, 0, 384.934, 234.431, 0, 0, 1],
     help="camera intrinsix."
 )
 parser.add_argument(
