@@ -12,7 +12,7 @@ from glob import glob
 import json
 from utils import PoseUtils, MeshUtils, SysUtils, ImgPcldUtils
 from fps.fps_utils import farthest_point_sampling
-
+from scipy.spatial.transform import Rotation as R
 
 pose_utils = PoseUtils()
 mesh_utils = MeshUtils()
@@ -103,6 +103,9 @@ def extract_one_scene_textured_kp3ds(args, color, depth, o2c_pose, i_cam):
 
 def extract_textured_kp3ds(args, mesh_pth, sv_kp=True):
     xyzs = mesh_utils.get_p3ds_from_mesh(mesh_pth, scale2m=args.scale2m)
+    # rot_x = lambda deg: R.from_euler('x', np.radians(deg)).as_matrix()
+    # xyzs = (rot_x(90) @ xyzs.T).T
+    # print(xyzs.shape)
     mean = np.mean(xyzs, axis=0)
     obj_pose = np.eye(4)
     obj_pose[:3, 3] = -1.0 * mean

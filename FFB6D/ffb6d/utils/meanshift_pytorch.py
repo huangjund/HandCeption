@@ -77,6 +77,9 @@ class MeanShiftTorch():
             num_in = torch.sum(dis < self.bandwidth, dim=1)
             max_num, max_idx = torch.max(num_in, 0)
             lb_idxs = torch.arange(labels.shape[0])
+            device = labels.device  # Ensure consistency
+            lb_idxs = lb_idxs.to(device)
+            dis = dis.to(device)
             in_lb_idxs = lb_idxs[labels == 0][dis[max_idx] < self.bandwidth]
             labels[in_lb_idxs] = iclus
             C_lst.append(C_rm[max_idx, :])

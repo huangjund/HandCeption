@@ -11,17 +11,59 @@ import pickle as pkl
 from utils.basic_utils import Basic_Utils
 import scipy.io as scio
 import scipy.misc
+import json
 try:
     from neupeak.utils.webcv2 import imshow, waitKey
 except:
     from cv2 import imshow, waitKey
 import normalSpeed
 from models.RandLA.helper_tool import DataProcessing as DP
+# for debug
+# import matplotlib
+# matplotlib.use('Qt5Agg')  # or 'TkAgg'
+from scipy.spatial.transform import Rotation as R
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.mplot3d import Axes3D
+# import pickle
 
+
+rot_x = lambda deg: R.from_euler('x', np.radians(deg)).as_matrix()
+rot_y = lambda deg: R.from_euler('y', np.radians(deg)).as_matrix()
+rot_z = lambda deg: R.from_euler('z', np.radians(deg)).as_matrix()
 
 config = Config(ds_name='test_ycb')
 bs_utils = Basic_Utils(config)
 
+def temp(ax):
+    # Ensure the axes have equal scale
+    x_limits = ax.get_xlim()
+    y_limits = ax.get_ylim()
+    z_limits = ax.get_zlim()
+
+    # Find the min and max ranges across all axes
+    all_limits = np.array([x_limits, y_limits, z_limits])
+    min_val = all_limits[:, 0].min()
+    max_val = all_limits[:, 1].max()
+
+    # Set all axes to the same range
+    ax.set_xlim(min_val, max_val)
+    ax.set_ylim(min_val, max_val)
+    ax.set_zlim(min_val, max_val)
+
+    plt.show(block=True)
+
+
+def load_config(config_path):
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    return config
+
+cam_config = load_config("../../blenderYCB/configs/config.json")["camera"]
+R_mat = R.from_euler('xyz', np.radians(cam_config["location"]["rpy"])).as_matrix()  # 3x3 Rotation matrix
+H_cam = np.eye(4)
+H_cam[:3, :3] = rot_x(180) @ R_mat  # Set rotation
+H_cam[:3, 3] = cam_config["location"]["xyz"]     # Set translation
+H_cam_inv = np.linalg.inv(H_cam)
 
 class Dataset():
 
@@ -204,22 +246,24 @@ class Dataset():
             if self.rng.rand() > 0.8:
                 rgb = self.rgb_add_noise(rgb)
 
-        dpt_um = bs_utils.fill_missing(dpt_um, cam_scale, 1)
+        # dpt_um = bs_utils.fill_missing(dpt_um, cam_scale, 1)
         # unique, counts = np.unique(dpt_um, return_counts=True)
         # print(dict(zip(unique, counts)))
         msk_dp = dpt_um > 1e-6
 
         dpt_mm = (dpt_um.copy()/10).astype(np.uint16)
         nrm_map = normalSpeed.depth_normal(
-            dpt_mm, K[0][0], K[1][1], 5, 2000, 20, False
+            dpt_mm, K[0][0], K[1][1], 5, 300, 20, False
         )
         if self.debug:
             show_nrm_map = ((nrm_map + 1.0) * 127).astype(np.uint8)
             imshow("nrm_map", show_nrm_map)
+            waitKey()
 
         dpt_m = dpt_um.astype(np.float32) / cam_scale
         dpt_xyz = self.dpt_2_pcld(dpt_m, 1.0, K)
 
+        # downsample the mask
         choose = msk_dp.flatten().nonzero()[0].astype(np.uint32)
         if len(choose) < 400:
             return None
@@ -324,6 +368,7 @@ class Dataset():
                 p2ds = bs_utils.project_p3d(inputs['cld_xyz%d'%ip], cam_scale, K)
                 srgb1 = bs_utils.paste_p2ds(show_rgb.copy(), p2ds, (0, 0, 255))
                 imshow("rz_pcld_%d_rnd" % ip, srgb1)
+                waitKey()
 
         item_dict = dict(
             rgb=rgb.astype(np.uint8),  # [c, h, w]
@@ -338,6 +383,8 @@ class Dataset():
             cls_ids=cls_ids.astype(np.int32),
             ctr_3ds=ctr3ds.astype(np.float32),
             kp_3ds=kp3ds.astype(np.float32),
+            cam_scale=np.array([cam_scale]).astype(np.float32),
+            K=K.astype(np.float32)
         )
         item_dict.update(inputs)
         if self.debug:
@@ -364,8 +411,11 @@ class Dataset():
             RTs[i] = RT
 
             ctr = bs_utils.get_ctr(self.cls_lst[cls_id-1]).copy()[:, None]
+            #ctr = np.dot(ctr.T, r.T) + t[:, 0]
+            ctr = (rot_x(90)@ctr)
             ctr = np.dot(ctr.T, r.T) + t[:, 0]
-            ctr3ds[i, :] = ctr[0]
+            ctr = ((H_cam_inv[:3, :3] @ ctr[0].T) + H_cam_inv[:3, 3])
+            ctr3ds[i, :] = ctr
             msk_idx = np.where(labels == cls_id)[0]
 
             target_offset = np.array(np.add(cld, -1.0*ctr3ds[i, :]))
@@ -380,7 +430,9 @@ class Dataset():
             kps = bs_utils.get_kps(
                 self.cls_lst[cls_id-1], kp_type=kp_type, ds_type='test_ycb'
             ).copy()
-            kps = np.dot(kps, r.T) + t[:, 0]
+            kps = (rot_x(90) @ kps.T).T
+            kps = ((r @ kps.T).T + t[:,0])
+            kps = ((H_cam_inv[:3, :3] @ kps.T) + H_cam_inv[:3, 3].reshape(3, 1)).T
             kp3ds[i] = kps
 
             target = []
@@ -409,11 +461,11 @@ class Dataset():
 def main():
     # config.mini_batch_size = 1
     global DEBUG
-    DEBUG = True
+    DEBUG = False
     ds = {}
-    ds['train'] = Dataset('train', DEBUG=True)
+    ds['train'] = Dataset('train', DEBUG=DEBUG)
     # ds['val'] = Dataset('validation')
-    ds['test'] = Dataset('test', DEBUG=True)
+    ds['test'] = Dataset('test', DEBUG=DEBUG)
     idx = dict(
         train=0,
         val=0,
@@ -428,11 +480,15 @@ def main():
             K = datum['K']
             cam_scale = datum['cam_scale']
             rgb = datum['rgb'].transpose(1, 2, 0)[...,::-1].copy()# [...,::-1].copy()
-            for i in range(22):
+            cmd = waitKey(0)
+            for i in range(config.n_objects-1):
+                #if datum['cls_ids'][i] != 1:
                 pcld = datum['cld_rgb_nrm'][:3, :].transpose(1, 0).copy()
                 p2ds = bs_utils.project_p3d(pcld, cam_scale, K)
                 # rgb = bs_utils.draw_p2ds(rgb, p2ds)
                 kp3d = datum['kp_3ds'][i]
+                #kp3d = ((H_cam_inv[:3,:3] @ kp3d.T) + H_cam_inv[:3,3].reshape(3, 1)).T
+
                 if kp3d.sum() < 1e-6:
                     break
                 kp_2ds = bs_utils.project_p3d(kp3d, cam_scale, K)
@@ -440,6 +496,8 @@ def main():
                     rgb, kp_2ds, 3, bs_utils.get_label_color(datum['cls_ids'][i][0], mode=1)
                 )
                 ctr3d = datum['ctr_3ds'][i]
+                #ctr3d = ((H_cam_inv[:3, :3] @ ctr3d.T) + H_cam_inv[:3, 3])
+
                 ctr_2ds = bs_utils.project_p3d(ctr3d[None, :], cam_scale, K)
                 rgb = bs_utils.draw_p2ds(
                     rgb, ctr_2ds, 4, (0, 0, 255)

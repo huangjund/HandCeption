@@ -42,7 +42,7 @@ class PSPUpsample(nn.Module):
         )
 
     def forward(self, x):
-        return self.conv(x)
+        return self.conv(x).to(x.dtype)
 
 
 class Modified_PSPNet(nn.Module):

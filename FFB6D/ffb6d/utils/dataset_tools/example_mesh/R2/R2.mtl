@@ -1,4 +1,4 @@
-# Blender 4.2.1 LTS MTL File: 'rendering.blend'
+# Blender 4.2.1 LTS MTL File: 'uv_edit.blend'
 # www.blender.org
 
 newmtl R2_mtl
@@ -14,4 +14,4 @@ Pc 0.000000
 Pcr 0.030000
 aniso 0.000000
 anisor 0.000000
-map_Kd R2_uv.png
+map_Kd R2_texture.png

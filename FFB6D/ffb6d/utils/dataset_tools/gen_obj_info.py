@@ -8,9 +8,17 @@ import pickle as pkl
 from fps.fps_utils import farthest_point_sampling
 from argparse import ArgumentParser
 from utils import MeshUtils, ImgPcldUtils, SysUtils
+from scipy.spatial.transform import Rotation as R
+import json
 
+rot_x = lambda deg: R.from_euler('x', np.radians(deg)).as_matrix()
+rot_y = lambda deg: R.from_euler('y', np.radians(deg)).as_matrix()
+rot_z = lambda deg: R.from_euler('z', np.radians(deg)).as_matrix()
 
 parser = ArgumentParser()
+
+
+parser.add_argument("--config", default="../../blenderYCB/configs/config.json", help="Path to the configuration file")
 parser.add_argument(
     "--obj_name", type=str, default="ape", help="Object name."
 )
@@ -75,6 +83,10 @@ if args.use_pyrender:
 else:
     from rgbd_rnder_sift_kp3ds import extract_textured_kp3ds
 
+def load_config(config_path):
+    with open(config_path, "r") as f:
+        config = json.load(f)
+    return config
 
 # Read object vertexes from text file
 def get_p3ds_from_txt(pxyz_pth):
@@ -90,6 +102,9 @@ def get_farthest_3d(p3ds, num=8, init_center=False):
 
 # Compute and save all mesh info
 def gen_one_mesh_info(args, obj_pth, sv_fd):
+    config = load_config(args.config)
+    cam_xyz = config["camera"]["location"]["xyz"]
+    cam_rpy = config["camera"]["rotation"]["rpy"]
     sys_utils.ensure_dir(sv_fd)
 
     p3ds = mesh_utils.get_p3ds_from_mesh(obj_pth, scale2m=args.scale2m)
@@ -123,6 +138,7 @@ def gen_one_mesh_info(args, obj_pth, sv_fd):
     with open(textured_fps_pth, 'w') as of:
         for p3d in textured_fps:
             print(p3d[0], p3d[1], p3d[2], file=of)
+
 
 
 def main():

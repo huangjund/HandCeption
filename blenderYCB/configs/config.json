@@ -2,7 +2,7 @@
   "shuffle_seed": "OFF",
   "numpy_seed": 19,
   "blenderproc_seed": "69",
-  "urdf_path": "data/AssemV_camera/urdf/AssemV_camera.urdf",
+  "urdf_path": "data/Assem_DexCo/urdf/Assem_DexCo.urdf",
   "models_path": "data/objs_custom_data",
   "light": {
     "type": "POINT",
@@ -18,7 +18,7 @@
     "w": 640,
     "randomize_params_percent": 5.0,
     "location":{
-      "xyz": [0, 0.05, -0.16],
+      "xyz": [0, 0.038513, -0.15584],
       "rpy": [-200, 0, 0]
     },
     "range": {
@@ -40,8 +40,8 @@
   },
   "dataset": {
     "save_path": "./output",
-    "scenes_per_run": 20,
-    "images_per_scene": 20
+    "scenes_per_run": 5,
+    "images_per_scene": 10
   },
   "object":{
     "motion_range_bound_low": [-25, -30, -40, -25, -30, -40],

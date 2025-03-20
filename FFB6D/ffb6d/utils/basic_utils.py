@@ -27,7 +27,10 @@ intrinsic_matrix = {
                         [0.      , 0.        , 1.0]], np.float32),
     'ycb_K2': np.array([[1077.836, 0.        , 323.7872],
                         [0.      , 1078.189  , 279.6921],
-                        [0.      , 0.        , 1.0]], np.float32)
+                        [0.      , 0.        , 1.0]], np.float32),
+    'ycb_test': np.array([[384.934, 0., 317.138],  # Example intrinsic matrix for the "test" dataset
+                          [0., 384.934, 234.431],
+                          [0., 0., 1.]], np.float32),
 }
 
 
@@ -163,7 +166,7 @@ class Basic_Utils():
         self.xmap = np.array([[j for i in range(640)] for j in range(480)])
         self.ymap = np.array([[i for i in range(640)] for j in range(480)])
         self.config = config
-        if config.dataset_name == "ycb":
+        if config.dataset_name == "ycb" or config.dataset_name == "test_ycb":
             self.ycb_cls_lst = config.ycb_cls_lst
         self.ycb_cls_ptsxyz_dict = {}
         self.ycb_cls_ptsxyz_cuda_dict = {}
@@ -584,7 +587,7 @@ class Basic_Utils():
             use_orbfps = self.config.use_orbfps
         except Exception:
             use_orbfps = False
-        if ds_type == "ycb":
+        if ds_type == "ycb" or ds_type == "test_ycb":
             if cls in self.ycb_cls_kps_dict.keys():
                 return self.ycb_cls_kps_dict[cls].copy()
             if use_orbfps:

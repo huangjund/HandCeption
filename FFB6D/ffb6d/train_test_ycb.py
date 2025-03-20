@@ -190,7 +190,7 @@ def load_checkpoint(model=None, optimizer=None, filename="checkpoint"):
         return None
 
 
-def view_labels(rgb_chw, cld_cn, labels, K=config.intrinsic_matrix['ycb_K1']):
+def view_labels(rgb_chw, cld_cn, labels, K=config.intrinsic_matrix['ycb_test']):
     rgb_hwc = np.transpose(rgb_chw[0].numpy(), (1, 2, 0)).astype("uint8").copy()
     cld_nc = np.transpose(cld_cn.numpy(), (1, 0)).copy()
     p2ds = bs_utils.project_p3d(cld_nc, 1.0, K).astype(np.int32)

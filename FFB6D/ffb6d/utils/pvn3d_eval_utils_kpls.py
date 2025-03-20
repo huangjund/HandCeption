@@ -15,7 +15,7 @@ except Exception:
     from cv2 import imshow, waitKey
 
 
-config = Config(ds_name='ycb')
+config = Config(ds_name='test_ycb')
 bs_utils = Basic_Utils(config)
 cls_lst = config.ycb_cls_lst
 try:

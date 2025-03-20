@@ -235,6 +235,17 @@ class BlenderProcRenderer:
                 centers = self.get_object_image_coordinates()
                 cls_indexes = np.array(list(centers.keys()), dtype=np.int32)  # Extract category IDs
                 poses = self.get_object_poses()
+                # T02_L = T01_L @ T12_L
+                # T03_L = T01_L @ T12_L @ T23_L
+                # T02_R = T01_R @ T12_R
+                # T03_R = T01_R @ T12_R @ T23_R
+                # poses = {}
+                # poses[1] = np.eye(4)[:3,:]
+                # poses[2] = T02_L[:3,:]
+                # poses[3] = T03_L[:3,:]
+                # poses[4] = T02_R[:3,:]
+                # poses[5] = T03_R[:3,:]
+
                 meta_data = {
                     "center": np.array(list(centers.values()), dtype=np.float32).squeeze(axis=1),  # (N, 2)
                     "cls_indexes": cls_indexes,  # (N,)
@@ -246,6 +257,10 @@ class BlenderProcRenderer:
                 os.makedirs(os.path.join(scene_output, f"rendered_scene_{i + 1}"), exist_ok=True)
                 meta_path = os.path.join(scene_output, f"rendered_scene_{i + 1}",f"{frame}_meta.mat")
                 sio.savemat(meta_path, meta_data)
+                print("T02_L\n",T02_L[:3,:],'\n',meta_data["poses"][:,:,1])
+                print("T03_L\n",T03_L[:3,:],'\n',meta_data["poses"][:,:,2])
+                print("T02_R\n",T02_R[:3,:],'\n',meta_data["poses"][:,:,3])
+                print("T03_R\n",T03_R[:3,:],'\n',meta_data["poses"][:,:,4])
 
 
             data = bproc.renderer.render()

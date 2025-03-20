@@ -1,5 +1,5 @@
 cd utils/nearest_neighbors
-python3 setup.py install --home="."
+pip install . --home="."
 cd ../../
 
 cd utils/cpp_wrappers
