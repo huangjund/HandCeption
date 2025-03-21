@@ -13,8 +13,14 @@ ln -s /ssd2/sun2012pascalformat/ . # link the background images to the data fold
 
 # create a conda environment
 conda create -n render python=3.10 -y
-
+pip -r install requirement.txt
 ```
 
+```angular2html
+# edit config.json
 
+# generate data
 blenderproc run scripts/generateRendering.py
+python vis_hdf5.py
+python hdf5Topng.py
+```

@@ -40,7 +40,7 @@
   },
   "dataset": {
     "save_path": "./output",
-    "scenes_per_run": 5,
+    "scenes_per_run": 50,
     "images_per_scene": 10
   },
   "object":{

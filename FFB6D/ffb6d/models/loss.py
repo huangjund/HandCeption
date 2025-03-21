@@ -10,13 +10,14 @@ from torch.autograd import Variable
 
 
 class FocalLoss(_Loss):
-    def __init__(self, gamma=0, alpha=None, size_average=True):
+    def __init__(self, gamma=0, alpha=None, reduction='mean'):#, size_average=True):
         super(FocalLoss, self).__init__()
         self.gamma = gamma
         self.alpha = alpha
         if isinstance(alpha,(float,int)): self.alpha = torch.Tensor([alpha,1-alpha])
         if isinstance(alpha,list): self.alpha = torch.Tensor(alpha)
-        self.size_average = size_average
+        #self.size_average = size_average
+        self.reduction = reduction
 
     def forward(self, input, target):
         if input.dim()>2:
@@ -27,7 +28,7 @@ class FocalLoss(_Loss):
         target = target.view(-1,1)
         # print("fcls reshape input.size", input.size(), target.size())
 
-        logpt = F.log_softmax(input)
+        logpt = F.log_softmax(input,dim=1)
         logpt = logpt.gather(1,target)
         logpt = logpt.view(-1)
         pt = Variable(logpt.data.exp())
@@ -39,18 +40,27 @@ class FocalLoss(_Loss):
             logpt = logpt * Variable(at)
 
         loss = -1 * (1-pt)**self.gamma * logpt
-        if self.size_average: return loss.mean()
+        #if self.size_average: return loss.mean()
+        if self.reduction == 'mean':
+            return loss.mean()
+        elif self.reduction == 'sum':
+            return loss.sum()
         else: return loss.sum()
 
 
 def of_l1_loss(
         pred_ofsts, kp_targ_ofst, labels,
-        sigma=1.0, normalize=True, reduce=False
+        sigma=1.0, normalize=True, reduction='mean'
 ):
     '''
+    Calculates L1 loss between predicted offsets and target offsets,
+    with optional weighting, normalization, and reduction.
+
     :param pred_ofsts:      [bs, n_kpts, n_pts, c]
     :param kp_targ_ofst:    [bs, n_pts, n_kpts, c]
     :param labels:          [bs, n_pts, 1]
+    :param normalize:       Whether to normalize the loss by valid points.
+    :param reduce:          Reduction method ('mean', 'sum', or None).
     '''
     w = (labels > 1e-8).float()
     bs, n_kpts, n_pts, c = pred_ofsts.size()
@@ -58,20 +68,29 @@ def of_l1_loss(
     w = w.view(bs, 1, n_pts, 1).repeat(1, n_kpts, 1, 1).contiguous()
     kp_targ_ofst = kp_targ_ofst.view(bs, n_pts, n_kpts, c)
     kp_targ_ofst = kp_targ_ofst.permute(0, 2, 1, 3).contiguous()
+
+    # Calculate L1 loss
     diff = pred_ofsts - kp_targ_ofst
     abs_diff = torch.abs(diff)
-    abs_diff = w * abs_diff
-    in_loss = abs_diff
+    weighted_abs_diff = w * abs_diff
 
+    # Normalize by valid points
     if normalize:
-        in_loss = torch.sum(
-            in_loss.view(bs, n_kpts, -1), 2
-        ) / (torch.sum(w.view(bs, n_kpts, -1), 2) + 1e-3)
+        loss = torch.sum(weighted_abs_diff.view(bs, n_kpts, -1), 2) / (torch.sum(w.view(bs, n_kpts, -1), 2) + 1e-3)
+    else:
+        loss = weighted_abs_diff
 
-    if reduce:
-        in_loss = torch.mean(in_loss)
+    # Reduce loss
+    if reduction == 'mean':
+        loss = torch.mean(loss)
+    elif reduction == 'sum':
+        loss = torch.sum(loss)
+    elif reduction is None:
+        pass
+    else:
+        raise ValueError(f"Invalid reduction method: {reduction}")
 
-    return in_loss
+    return loss
 
 
 class OFLoss(_Loss):
@@ -80,11 +99,11 @@ class OFLoss(_Loss):
 
     def forward(
         self, pred_ofsts, kp_targ_ofst, labels,
-        normalize=True, reduce=False
+        normalize=True, reduction='mean'
     ):
         l1_loss = of_l1_loss(
             pred_ofsts, kp_targ_ofst, labels,
-            sigma=1.0, normalize=True, reduce=False
+            sigma=1.0, normalize=True, reduction='mean'
         )
 
         return l1_loss
@@ -250,7 +269,7 @@ class OfstMapL1Loss(nn.Module):
         super().__init__()
         self.eps = eps
 
-    def forward(self, rgb_labels, pred, gt, normalize=True, reduce=True):
+    def forward(self, rgb_labels, pred, gt, normalize=True, reduction='mean'):
         wgt = (rgb_labels > 1e-8).float()
         bs, n_kpts, c, h, w = pred.size()
         wgt = wgt.view(bs, 1, 1, h, w).repeat(1, n_kpts, c, 1, 1).contiguous()
@@ -265,8 +284,15 @@ class OfstMapL1Loss(nn.Module):
                 in_loss.view(bs, n_kpts, -1), 2
             ) / (torch.sum(wgt.view(bs, n_kpts, -1), 2) + 1e-3)
 
-        if reduce:
+        # Reduce loss
+        if reduction == 'mean':
             in_loss = torch.mean(in_loss)
+        elif reduction == 'sum':
+            in_loss = torch.sum(in_loss)
+        elif reduction is None:
+            pass
+        else:
+            raise ValueError(f"Invalid reduction method: {reduction}")
 
         return in_loss
 
@@ -294,7 +320,7 @@ class OfstMapKp3dL1Loss(nn.Module):
         return p3ds
 
     def forward(
-        self, rgb_labels, pred, xmap, ymap, kp3d_map, Ki, normalize=True, reduce=False,
+        self, rgb_labels, pred, xmap, ymap, kp3d_map, Ki, normalize=True, reduction='mean',
         scale=1
     ):
         """
@@ -328,7 +354,14 @@ class OfstMapKp3dL1Loss(nn.Module):
                 in_loss.view(bs, n_kpts, -1), 2
             ) / (torch.sum(wgt.view(bs, n_kpts, -1), 2) + 1e-3)
 
-        if reduce:
+        # Reduce loss
+        if reduction == 'mean':
             in_loss = torch.mean(in_loss)
+        elif reduction == 'sum':
+            in_loss = torch.sum(in_loss)
+        elif reduction is None:
+            pass
+        else:
+            raise ValueError(f"Invalid reduction method: {reduction}")
 
         return in_loss
