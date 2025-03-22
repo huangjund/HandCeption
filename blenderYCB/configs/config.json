@@ -4,6 +4,7 @@
   "blenderproc_seed": "69",
   "urdf_path": "data/Assem_DexCo/urdf/Assem_DexCo.urdf",
   "models_path": "data/objs_custom_data",
+  "num_pts": 6400,
   "light": {
     "type": "POINT",
     "energy": 1000,
@@ -40,8 +41,8 @@
   },
   "dataset": {
     "save_path": "./output",
-    "scenes_per_run": 50,
-    "images_per_scene": 10
+    "scenes_per_run": 20,
+    "images_per_scene": 2
   },
   "object":{
     "motion_range_bound_low": [-25, -30, -40, -25, -30, -40],

@@ -24,3 +24,4 @@ blenderproc run scripts/generateRendering.py
 python vis_hdf5.py
 python hdf5Topng.py
 ```
+## for YCB data generation, the valid id should start from 1

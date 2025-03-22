@@ -223,7 +223,7 @@ class Dataset():
         with Image.open(os.path.join(self.root, item_name+'-label.png')) as li:
             labels = np.array(li)
             # unique, counts = np.unique(labels, return_counts=True)
-            # print(dict(zip(unique, counts)))
+            # print(item_name,dict(zip(unique, counts)))
             # print("\n")
         rgb_labels = labels.copy()
         meta = scio.loadmat(os.path.join(self.root, item_name+'-meta.mat'))
@@ -410,7 +410,7 @@ class Dataset():
             RT = np.concatenate((r, t), axis=1)
             RTs[i] = RT
 
-            ctr = bs_utils.get_ctr(self.cls_lst[cls_id-1]).copy()[:, None]
+            ctr = bs_utils.get_ctr(self.cls_lst[i]).copy()[:, None]
             #ctr = np.dot(ctr.T, r.T) + t[:, 0]
             ctr = (rot_x(90)@ctr)
             ctr = np.dot(ctr.T, r.T) + t[:, 0]
@@ -428,7 +428,7 @@ class Dataset():
             else:
                 kp_type = 'farthest{}'.format(config.n_keypoints)
             kps = bs_utils.get_kps(
-                self.cls_lst[cls_id-1], kp_type=kp_type, ds_type='test_ycb'
+                self.cls_lst[i], kp_type=kp_type, ds_type='test_ycb'
             ).copy()
             kps = (rot_x(90) @ kps.T).T
             kps = ((r @ kps.T).T + t[:,0])

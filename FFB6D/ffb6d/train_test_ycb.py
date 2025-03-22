@@ -282,7 +282,7 @@ def model_fn_decorator(
                         cu_dt['ctr_targ_ofst'], labels, epoch, cu_dt['cls_ids'],
                         cu_dt['RTs'], end_points['pred_kp_ofs'],
                         cu_dt['kp_3ds'], cu_dt['ctr_3ds'], min_cnt=1,
-                        use_ctr_clus_flter=True, use_ctr=True, ds='ycb'
+                        use_ctr_clus_flter=True, use_ctr=True, ds='test_ycb'
                     )
                 else:
                     # test GT labels, keypoint and center point offset
@@ -292,7 +292,7 @@ def model_fn_decorator(
                         cld, cu_dt['rgb'], labels, gt_ctr_ofs,
                         cu_dt['ctr_targ_ofst'], labels, epoch, cu_dt['cls_ids'],
                         cu_dt['RTs'], gt_kp_ofs, cu_dt['kp_3ds'], cu_dt['ctr_3ds'],
-                        min_cnt=1, use_ctr_clus_flter=True, use_ctr=True, ds='ycb'
+                        min_cnt=1, use_ctr_clus_flter=True, use_ctr=True, ds='test_ycb'
                     )
 
         return (
@@ -564,7 +564,7 @@ def train():
         test_ds = dataset_desc.Dataset('test')
         test_loader = torch.utils.data.DataLoader(
             test_ds, batch_size=config.test_mini_batch_size, shuffle=False,
-            num_workers=20
+            num_workers=16
         )
 
     rndla_cfg = ConfigRandLA

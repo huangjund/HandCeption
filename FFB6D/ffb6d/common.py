@@ -97,7 +97,7 @@ class Config:
             self.ycb_cls_lst = self.read_lines(self.ycb_cls_lst_p)
             self.ycb_sym_cls_ids = [13, 16, 19, 20, 21]
         elif self.dataset_name == 'test_ycb':
-            self.n_objects = 5 + 1  # 21 objects + background
+            self.n_objects = 4 + 1  # 21 objects + background
             self.n_classes = self.n_objects
             self.use_orbfps = True
             self.kp_orbfps_dir = 'datasets/test_ycb/ycb_kps/'
@@ -124,7 +124,7 @@ class Config:
             )
             self.ycb_r_lst = list(np.loadtxt(ycb_r_lst_p))
             self.ycb_cls_lst = self.read_lines(self.ycb_cls_lst_p)
-            # self.ycb_sym_cls_ids = [13, 16, 19, 20, 21]
+            self.ycb_sym_cls_ids = []
         elif self.dataset_name == 'linemod':
             self.n_objects = 1 + 1  # 1 object + background
             self.n_classes = self.n_objects

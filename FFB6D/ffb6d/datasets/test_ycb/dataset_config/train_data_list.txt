@@ -26,13 +26,3 @@ data_syn/000036
 data_syn/000037
 data_syn/000038
 data_syn/000039
-data_syn/000040
-data_syn/000041
-data_syn/000042
-data_syn/000043
-data_syn/000044
-data_syn/000045
-data_syn/000046
-data_syn/000047
-data_syn/000048
-data_syn/000049

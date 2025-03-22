@@ -509,7 +509,7 @@ class Basic_Utils():
 
     def get_cls_name(self, cls, ds_type):
         if type(cls) is int:
-            if ds_type == 'ycb':
+            if ds_type == 'ycb' or ds_type == 'test_ycb':
                 cls = self.ycb_cls_lst[cls - 1]
             else:
                 cls = self.lm_cls_lst[cls - 1]
@@ -542,6 +542,18 @@ class Basic_Utils():
             pointxyz = np.loadtxt(ptxyz_ptn.format(cls), dtype=np.float32)
             self.ycb_cls_ptsxyz_dict[cls] = pointxyz
             return pointxyz
+        elif ds_type == "test_ycb":
+            cls = self.get_cls_name(cls, ds_type)
+            if cls in self.ycb_cls_ptsxyz_dict.keys():
+                return self.ycb_cls_ptsxyz_dict[cls]
+            ptxyz_ptn = os.path.join(
+                self.config.ycb_root, 'YCB_Video_Models', 'models',
+                '{}/points.xyz'.format(cls),
+            )
+            pointxyz = np.loadtxt(ptxyz_ptn.format(cls), dtype=np.float32)
+            self.ycb_cls_ptsxyz_dict[cls] = pointxyz
+            return pointxyz
+
         else:
             ptxyz_pth = os.path.join(
                 'datasets/linemod/Linemod_preprocessed/models',
@@ -557,7 +569,7 @@ class Basic_Utils():
     def get_pointxyz_cuda(
         self, cls, ds_type='ycb'
     ):
-        if ds_type == "ycb":
+        if ds_type == "ycb" or ds_type == "test_ycb":
             if cls in self.ycb_cls_ptsxyz_cuda_dict.keys():
                 return self.ycb_cls_ptsxyz_cuda_dict[cls].clone()
             ptsxyz = self.get_pointxyz(cls, ds_type)
@@ -579,7 +591,7 @@ class Basic_Utils():
             kps = np.loadtxt(kp_pth, dtype=np.float32)
             return kps
         if type(cls) is int:
-            if ds_type == 'ycb':
+            if ds_type == 'ycb' or ds_type == 'test_ycb':
                 cls = self.ycb_cls_lst[cls - 1]
             else:
                 cls = self.config.lm_id2obj_dict[cls]
@@ -618,11 +630,11 @@ class Basic_Utils():
             ctr = np.loadtxt(ctr_pth, dtype=np.float32)
             return ctr
         if type(cls) is int:
-            if ds_type == 'ycb':
+            if ds_type == 'ycb' or ds_type == 'test_ycb':
                 cls = self.ycb_cls_lst[cls - 1]
             else:
                 cls = self.config.lm_id2obj_dict[cls]
-        if ds_type == "ycb":
+        if ds_type == "ycb" or ds_type == 'test_ycb':
             if cls in self.ycb_cls_ctr_dict.keys():
                 return self.ycb_cls_ctr_dict[cls].copy()
             cor_pattern = os.path.join(

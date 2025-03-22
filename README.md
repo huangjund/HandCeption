@@ -91,9 +91,12 @@ pkg-config --modversion opencv4
 n_gpu=8
 cls='ape'
 torchrun --nproc_per_node=$n_gpu train_lm.py --gpus=$n_gpu --cls=$cls
+
+# evaluate
+torchrun --nproc_per_node=1 train_test_ycb.py --gpu '0' -eval_net -checkpoint train_log/test_ycb0321_40epoch_32bc/checkpoints/FFB6D_best.pth.tar -test -test_pose
 ```
 
 # TODO
 
 1. Substitute apex from nvidia github repo to pytorch package.
-2. 
+2. add all parameters to config.json

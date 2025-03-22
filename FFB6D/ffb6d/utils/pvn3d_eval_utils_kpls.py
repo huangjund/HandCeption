@@ -184,7 +184,7 @@ def eval_metric(
         kp_err = np.linalg.norm(gt_kp-pred_kp, axis=1).mean()
         cls_kp_err[cls_id].append(kp_err)
         gt_RT = RTs[icls]
-        mesh_pts = bs_utils.get_pointxyz_cuda(cls_lst[cls_id-1]).clone()
+        mesh_pts = bs_utils.get_pointxyz_cuda(cls_lst[cls_id-1],ds_type='test_ycb').clone()
         add = bs_utils.cal_add_cuda(pred_RT, gt_RT, mesh_pts)
         adds = bs_utils.cal_adds_cuda(pred_RT, gt_RT, mesh_pts)
         cls_add_dis[cls_id].append(add.item())
@@ -326,8 +326,8 @@ def eval_one_frame_pose_lm(
 class TorchEval():
 
     def __init__(self):
-        n_cls = 22
-        self.n_cls = 22
+        n_cls = 6
+        self.n_cls = 6
         self.cls_add_dis = [list() for i in range(n_cls)]
         self.cls_adds_dis = [list() for i in range(n_cls)]
         self.cls_add_s_dis = [list() for i in range(n_cls)]
@@ -462,7 +462,7 @@ class TorchEval():
         use_ctr_clus_flter_lst = [use_ctr_clus_flter for i in range(bs)]
         obj_id_lst = [obj_id for i in range(bs)]
         kp_type = [kp_type for i in range(bs)]
-        if ds == "ycb":
+        if ds == "ycb" or ds == 'test_ycb':
             data_gen = zip(
                 pclds, masks, pred_ctr_ofs, pred_kp_ofs, RTs,
                 cls_ids, use_ctr_lst, n_cls_lst, min_cnt_lst, use_ctr_clus_flter_lst,
@@ -477,12 +477,12 @@ class TorchEval():
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=bs
         ) as executor:
-            if ds == "ycb":
+            if ds == "ycb" or ds == 'test_ycb':
                 eval_func = eval_one_frame_pose
             else:
                 eval_func = eval_one_frame_pose_lm
             for res in executor.map(eval_func, data_gen):
-                if ds == 'ycb':
+                if ds == 'ycb' or ds == 'test_ycb':
                     cls_add_dis_lst, cls_adds_dis_lst, pred_cls_ids, pred_poses, pred_kp_errs = res
                     self.pred_id2pose_lst.append(
                         {cid: pose for cid, pose in zip(pred_cls_ids, pred_poses)}
