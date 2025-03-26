@@ -32,6 +32,9 @@ cd ..
 #install normalSpeed:
 git clone https://github.com/hfutcgncas/normalSpeed.git
 cd normalSpeed/normalSpeed
+# need to install opencv and pybind11 if not:
+sudo apt install libopencv-dev
+sudo apt install pybind11-dev
 pip install . #python3 setup.py install --user
 cd ..
 

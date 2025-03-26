@@ -6,17 +6,17 @@ pyyaml
 enum34
 future
 # scipy==1.4.1
-opencv_contrib_python==3.4.2.16
-matplotlib==3.0.2
+opencv_contrib_python
+matplotlib
+cython
 transforms3d==0.3.1
-scikit_image==0.13.1
-#lmdb==0.94
+scikit_image
 setuptools
-cffi==1.11.5
+cffi
 easydict==1.7
 plyfile==0.6
 glumpy==1.0.6
-pillow==8.2.0
+pillow
 Ninja
 tqdm
 pandas
