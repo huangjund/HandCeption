@@ -389,6 +389,7 @@ class Trainer(object):
                 )
             seg_res_fn = 'seg_res'
             for k, v in acc_dict.items():
+                v = np.mean(v)
                 seg_res_fn += '_%s%.2f' % (k, v)
             with open(os.path.join(config.log_eval_dir, seg_res_fn), 'w') as of:
                 for k, v in acc_dict.items():
@@ -532,7 +533,7 @@ class Trainer(object):
 
 
 def train():
-    print("local_rank:", args.local_rank)
+    args.local_rank = int(os.environ["LOCAL_RANK"])
     cudnn.benchmark = True
     if args.deterministic:
         cudnn.benchmark = False
@@ -545,6 +546,7 @@ def train():
         init_method='env://',
     )
     torch.manual_seed(0)
+    print(f"Process ID: {os.getpid()}, Local Rank {os.environ.get('LOCAL_RANK')}")
 
     if not args.eval_net:
         train_ds = dataset_desc.Dataset('train')

@@ -1,7 +1,7 @@
 {
     "output_dir": ".",
-    "num_files": 40,
-    "num_test": 12,
-    "num_train": 28,
+    "num_files": 200,
+    "num_test": 200,
+    "num_train": 0,
     "seed": 42
 }

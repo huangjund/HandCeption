@@ -326,8 +326,8 @@ def eval_one_frame_pose_lm(
 class TorchEval():
 
     def __init__(self):
-        n_cls = 6
-        self.n_cls = 6
+        n_cls = 5
+        self.n_cls = 5
         self.cls_add_dis = [list() for i in range(n_cls)]
         self.cls_adds_dis = [list() for i in range(n_cls)]
         self.cls_add_s_dis = [list() for i in range(n_cls)]

@@ -18,13 +18,13 @@ except:
     from cv2 import imshow, waitKey
 import normalSpeed
 from models.RandLA.helper_tool import DataProcessing as DP
-# for debug
-# import matplotlib
-# matplotlib.use('Qt5Agg')  # or 'TkAgg'
 from scipy.spatial.transform import Rotation as R
-# import matplotlib.pyplot as plt
-# from mpl_toolkits.mplot3d import Axes3D
-# import pickle
+# for debug
+import matplotlib
+matplotlib.use('Qt5Agg')  # or 'TkAgg'
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import pickle
 
 
 rot_x = lambda deg: R.from_euler('x', np.radians(deg)).as_matrix()
@@ -34,7 +34,7 @@ rot_z = lambda deg: R.from_euler('z', np.radians(deg)).as_matrix()
 config = Config(ds_name='test_ycb')
 bs_utils = Basic_Utils(config)
 
-def temp(ax):
+def equal_axis(ax):
     # Ensure the axes have equal scale
     x_limits = ax.get_xlim()
     y_limits = ax.get_ylim()
@@ -412,7 +412,7 @@ class Dataset():
 
             ctr = bs_utils.get_ctr(self.cls_lst[i]).copy()[:, None]
             #ctr = np.dot(ctr.T, r.T) + t[:, 0]
-            ctr = (rot_x(90)@ctr)
+            # ctr = (rot_x(90)@ctr)
             ctr = np.dot(ctr.T, r.T) + t[:, 0]
             ctr = ((H_cam_inv[:3, :3] @ ctr[0].T) + H_cam_inv[:3, 3])
             ctr3ds[i, :] = ctr
@@ -430,7 +430,7 @@ class Dataset():
             kps = bs_utils.get_kps(
                 self.cls_lst[i], kp_type=kp_type, ds_type='test_ycb'
             ).copy()
-            kps = (rot_x(90) @ kps.T).T
+            # kps = (rot_x(90) @ kps.T).T
             kps = ((r @ kps.T).T + t[:,0])
             kps = ((H_cam_inv[:3, :3] @ kps.T) + H_cam_inv[:3, 3].reshape(3, 1)).T
             kp3ds[i] = kps
@@ -481,6 +481,18 @@ def main():
             cam_scale = datum['cam_scale']
             rgb = datum['rgb'].transpose(1, 2, 0)[...,::-1].copy()# [...,::-1].copy()
             cmd = waitKey(0)
+
+            data_to_save = {
+                "rgb": datum["rgb"],
+                "cld_rgb_nrm": datum["cld_rgb_nrm"],
+                "kp_3ds": datum["kp_3ds"],
+                "ctr_3ds": datum["ctr_3ds"],
+                "RTs": datum["RTs"]
+            }
+            # Save to pickle file
+            with open("datum.pkl", "wb") as f:
+                pickle.dump(data_to_save, f)
+
             for i in range(config.n_objects-1):
                 #if datum['cls_ids'][i] != 1:
                 pcld = datum['cld_rgb_nrm'][:3, :].transpose(1, 0).copy()
