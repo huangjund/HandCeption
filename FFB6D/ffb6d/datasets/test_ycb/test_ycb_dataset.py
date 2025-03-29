@@ -232,7 +232,7 @@ class Dataset():
         else:
             K = config.intrinsic_matrix['ycb_test']
 
-        with Image.open(os.path.join(self.root, item_name+'-color.jpg')) as ri:
+        with Image.open(os.path.join(self.root, item_name+'-color.png')) as ri:
             if self.add_noise:
                 ri = self.trancolor(ri)
             rgb = np.array(ri)[:, :, :3]

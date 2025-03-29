@@ -11,10 +11,10 @@
     "location": [0, 2, -2]
   },
   "camera": {
-    "px": 384.934,
-    "py": 384.934,
-    "u0": 317.138,
-    "v0": 234.431,
+    "px": 435.6557922363281,
+    "py": 434.4980163574219,
+    "u0": 316.09930419921875,
+    "v0": 234.21377563476562,
     "h": 480,
     "w": 640,
     "randomize_params_percent": 5.0,
@@ -41,8 +41,8 @@
   },
   "dataset": {
     "save_path": "./output",
-    "scenes_per_run": 100,
-    "images_per_scene": 2
+    "scenes_per_run": 5000,
+    "images_per_scene": 6
   },
   "object":{
     "motion_range_bound_low": [-25, -30, -40, -25, -30, -40],

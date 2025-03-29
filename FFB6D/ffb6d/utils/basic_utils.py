@@ -28,9 +28,10 @@ intrinsic_matrix = {
     'ycb_K2': np.array([[1077.836, 0.        , 323.7872],
                         [0.      , 1078.189  , 279.6921],
                         [0.      , 0.        , 1.0]], np.float32),
-    'ycb_test': np.array([[384.934, 0., 317.138],  # Example intrinsic matrix for the "test" dataset
-                          [0., 384.934, 234.431],
-                          [0., 0., 1.]], np.float32),
+    'ycb_test': np.array(
+        [[435.6557922363281, 0., 316.09930419921875],  # Example intrinsic matrix for the "test" dataset
+         [0., 434.4980163574219, 234.21377563476562],
+         [0., 0., 1.]], np.float32),
 }
 
 
