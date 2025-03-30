@@ -41,8 +41,8 @@
   },
   "dataset": {
     "save_path": "./output",
-    "scenes_per_run": 2000,
-    "images_per_scene": 12 
+    "scenes_per_run": 5000,
+    "images_per_scene": 6
   },
   "object":{
     "motion_range_bound_low": [-25, -30, -40, -25, -30, -40],

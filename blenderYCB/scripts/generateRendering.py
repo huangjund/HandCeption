@@ -11,6 +11,7 @@ import sys
 import bpy
 import h5py
 import scipy.io as sio  # Import SciPy for saving .mat files
+from blenderproc.python.utility.CollisionUtility import CollisionUtility
 
 # sys.path.append("/home/jd/miniconda3/envs/render/lib/python3.10/site-packages/")
 # import pydevd_pycharm
@@ -89,7 +90,6 @@ class BlenderProcRenderer:
                 self.objs[obj][0].set_cp("category_id",0)
             else:
                 self.objs[obj][0].set_cp("category_id",i)
-
     def setup_camera(self):
         cam_config = self.config["camera"]
         self.intrinsic_matrix = np.array([
@@ -150,6 +150,59 @@ class BlenderProcRenderer:
 
         return object_poses
 
+    def check_collisions(self):
+        """
+        Checks for collisions between a main object and a list of scene objects.
+
+        :return: A boolean to indicate wether collision happens where keys are object names and values are boolean indicating collision.
+        """
+        # Initialize BVH cache
+        bvh_L3R3_cache = {}
+        bvh_L3R2_cache = {}
+        bvh_L2R3_cache = {}
+        bvh_L2R2_cache = {}
+
+        L2 = self.objs['L2.obj'][0]
+        L3 = self.objs['L3.obj'][0]
+        R2 = self.objs['R2.obj'][0]
+        R3 = self.objs['R3.obj'][0]
+
+        collisions = False
+
+        # Check mesh intersection
+        collisions, updated_bvh_L3R3_cache = CollisionUtility.check_mesh_intersection(
+            L3,
+            R3,
+            skip_inside_check=True,
+            bvh_cache=bvh_L3R3_cache
+        )
+        if collisions:
+            return collisions
+        collisions, updated_bvh_L3R2_cache = CollisionUtility.check_mesh_intersection(
+            L3,
+            R2,
+            skip_inside_check=True,
+            bvh_cache=bvh_L3R2_cache
+        )
+        if collisions:
+            return collisions
+        collisions, updated_bvh_L2R3_cache = CollisionUtility.check_mesh_intersection(
+            L2,
+            R3,
+            skip_inside_check=True,
+            bvh_cache=bvh_L2R3_cache
+        )
+        if collisions:
+            return collisions
+        collisions, updated_bvh_L2R2_cache = CollisionUtility.check_mesh_intersection(
+            L2,
+            R2,
+            skip_inside_check=True,
+            bvh_cache=bvh_L2R2_cache
+        )
+
+        return collisions
+
     def render_scene(self):
         self.setup_camera()
         self.load_scenes()
@@ -164,6 +217,7 @@ class BlenderProcRenderer:
         scene_nums = np.array(self.config["dataset"]["scenes_per_run"])
         num_frames = np.array(self.config["dataset"]["images_per_scene"])
 
+        np.random.seed(self.config["numpy_seed"])
         selected_scenes = list(np.random.choice(self.scene_files, scene_nums, replace=False))  # No duplicates
         for i, bg_image in enumerate(selected_scenes):
             print(f"Rendering scene {i + 1}/{scene_nums}")
@@ -178,7 +232,15 @@ class BlenderProcRenderer:
             # material.set_principled_shader_value("Base Color", bg_img_obj)
             # # room_obj[0].set_shading_mode("SMOOTH")
             # room_obj[0].replace_materials(material)
-            bproc.world.set_world_background_hdr_img(bg_image)
+            # bg_image
+
+            # creat background
+            rnd = np.random.uniform(0,1)
+            if rnd < 0.4:
+                bproc.world.set_world_background_hdr_img(bg_image)
+            else:
+                bproc.world.set_world_background_hdr_img(os.path.join(self.config["scene"]["path"], "background.jpg"),
+                                                         rotation_euler=np.random.uniform([np.pi/2, 0, 0],[np.pi*3/2, 2*np.pi, 2*np.pi]))
 
             for frame in range(num_frames):
                 bproc.camera.add_camera_pose(bproc.math.build_transformation_mat(
@@ -190,50 +252,47 @@ class BlenderProcRenderer:
                 bproc.renderer.enable_segmentation_output(map_by=["category_id", "instance", "name"])
 
             for frame in range(num_frames):
-                # Set keyframe for object position at this frame
-                w1 = self.config["object"]["collision_w"][0]
-                w2 = self.config["object"]["collision_w"][1]
-                while True:
+                while 1:
                     joint_angles = np.random.uniform(motion_range_bound_low, motion_range_bound_high)
-                    # Check collision
-                    if (w1 * (joint_angles[1] + joint_angles[4]) + w2 * (joint_angles[2] + joint_angles[5]) <= 40 and
-                            (joint_angles[1] + joint_angles[4] <= 20)):
-                        joint_angles = self.config["object"]["direction"] * joint_angles
-                        break  # Exit loop when both constraints are met
-                # set objs poses
-                T01_L = self.kinematic_chain['L1_joint']['transformation_matrix'] @ self.create_transformation_matrix(
-                    np.array([0, 0, 0]), np.radians(np.array([0, 0, -1 * joint_angles[0]])))
-                T12_L = self.kinematic_chain['L2_joint']['transformation_matrix'] @ self.create_transformation_matrix(
-                    np.array([0, 0, 0]), np.radians(np.array([0, 0, -1 * joint_angles[1]])))
-                T23_L = self.kinematic_chain['L3_joint']['transformation_matrix'] @ self.create_transformation_matrix(
-                    np.array([0, 0, 0]), np.radians(np.array([0, 0, -1 * joint_angles[2]])))
-                L2_offset = np.eye(4)  # to adjust the intrinsic offset
-                L2_offset[:3, :3] = rot_x(90)
-                L3_offset = np.eye(4)
-                L3_offset[:3, :3] = rot_x(90)
-                T02_L = T01_L @ T12_L @ L2_offset
-                T03_L = T01_L @ T12_L @ T23_L @ L3_offset
-                self.objs['L2.obj'][0].set_location(T02_L[:3, 3], frame=frame)
-                self.objs['L2.obj'][0].set_rotation_mat(T02_L[:3, :3], frame=frame)
-                self.objs['L3.obj'][0].set_location(T03_L[:3, 3], frame=frame)
-                self.objs['L3.obj'][0].set_rotation_mat(T03_L[:3, :3], frame=frame)
+                    joint_angles = self.config["object"]["direction"] * joint_angles
+                    # set objs poses
+                    T01_L = self.kinematic_chain['L1_joint']['transformation_matrix'] @ self.create_transformation_matrix(
+                        np.array([0, 0, 0]), np.radians(np.array([0, 0, -1 * joint_angles[0]])))
+                    T12_L = self.kinematic_chain['L2_joint']['transformation_matrix'] @ self.create_transformation_matrix(
+                        np.array([0, 0, 0]), np.radians(np.array([0, 0, -1 * joint_angles[1]])))
+                    T23_L = self.kinematic_chain['L3_joint']['transformation_matrix'] @ self.create_transformation_matrix(
+                        np.array([0, 0, 0]), np.radians(np.array([0, 0, -1 * joint_angles[2]])))
+                    L2_offset = np.eye(4)  # to adjust the intrinsic offset
+                    L2_offset[:3, :3] = rot_x(90)
+                    L3_offset = np.eye(4)
+                    L3_offset[:3, :3] = rot_x(90)
+                    T02_L = T01_L @ T12_L @ L2_offset
+                    T03_L = T01_L @ T12_L @ T23_L @ L3_offset
+                    self.objs['L2.obj'][0].set_location(T02_L[:3, 3], frame=frame)
+                    self.objs['L2.obj'][0].set_rotation_mat(T02_L[:3, :3], frame=frame)
+                    self.objs['L3.obj'][0].set_location(T03_L[:3, 3], frame=frame)
+                    self.objs['L3.obj'][0].set_rotation_mat(T03_L[:3, :3], frame=frame)
 
-                T01_R = self.kinematic_chain['R1_joint']['transformation_matrix'] @ self.create_transformation_matrix(
-                    np.array([0, 0, 0]), np.radians(np.array([0, 0, -1 * joint_angles[3]])))
-                T12_R = self.kinematic_chain['R2_joint']['transformation_matrix'] @ self.create_transformation_matrix(
-                    np.array([0, 0, 0]), np.radians(np.array([0, 0, -1 * joint_angles[4]])))
-                T23_R = self.kinematic_chain['R3_joint']['transformation_matrix'] @ self.create_transformation_matrix(
-                    np.array([0, 0, 0]), np.radians(np.array([0, 0, -1 * joint_angles[5]])))
-                R2_offset = np.eye(4)
-                R2_offset[:3, :3] = rot_x(90)
-                R3_offset = np.eye(4)
-                R3_offset[:3, :3] = rot_x(90)
-                T02_R = T01_R @ T12_R @ R2_offset
-                T03_R = T01_R @ T12_R @ T23_R @ R3_offset
-                self.objs['R2.obj'][0].set_location(T02_R[:3, 3], frame=frame)
-                self.objs['R2.obj'][0].set_rotation_mat(T02_R[:3, :3], frame=frame)
-                self.objs['R3.obj'][0].set_location(T03_R[:3, 3], frame=frame)
-                self.objs['R3.obj'][0].set_rotation_mat(T03_R[:3, :3], frame=frame)
+                    T01_R = self.kinematic_chain['R1_joint']['transformation_matrix'] @ self.create_transformation_matrix(
+                        np.array([0, 0, 0]), np.radians(np.array([0, 0, -1 * joint_angles[3]])))
+                    T12_R = self.kinematic_chain['R2_joint']['transformation_matrix'] @ self.create_transformation_matrix(
+                        np.array([0, 0, 0]), np.radians(np.array([0, 0, -1 * joint_angles[4]])))
+                    T23_R = self.kinematic_chain['R3_joint']['transformation_matrix'] @ self.create_transformation_matrix(
+                        np.array([0, 0, 0]), np.radians(np.array([0, 0, -1 * joint_angles[5]])))
+                    R2_offset = np.eye(4)
+                    R2_offset[:3, :3] = rot_x(90)
+                    R3_offset = np.eye(4)
+                    R3_offset[:3, :3] = rot_x(90)
+                    T02_R = T01_R @ T12_R @ R2_offset
+                    T03_R = T01_R @ T12_R @ T23_R @ R3_offset
+                    self.objs['R2.obj'][0].set_location(T02_R[:3, 3], frame=frame)
+                    self.objs['R2.obj'][0].set_rotation_mat(T02_R[:3, :3], frame=frame)
+                    self.objs['R3.obj'][0].set_location(T03_R[:3, 3], frame=frame)
+                    self.objs['R3.obj'][0].set_rotation_mat(T03_R[:3, :3], frame=frame)
+
+                    # Collision checking, if no collision, continue
+                    if self.check_collisions() == False:
+                        break
 
                 centers = self.get_object_image_coordinates()
                 cls_indexes = np.array(list(centers.keys()), dtype=np.int32)  # Extract category IDs
